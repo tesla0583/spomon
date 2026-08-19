@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form_101>
+    <report_name>
+        <role>compliance_officer</role>
+        <first_name>Test</first_name>
+        <last_name>Officer</last_name>
+        <email>officer@example.test</email>
+        <fmcrn>FMCRN-000000</fmcrn>
+    </report_name>
+    <transaction>
+        <transaction_type>10</transaction_type>
+        <transaction_subtype>10.3</transaction_subtype>
+        <details>10.3.1</details>
+    </transaction>
+    <transaction_details>
+        <trans_date>2026-02-10</trans_date>
+        <currency>TJS</currency>
+        <amount>15000.50</amount>
+        <amount_nc>15000.50</amount_nc>
+        <transaction_desc>Оплата по договору поставки № TEST-0000</transaction_desc>
+    </transaction_details>
+    <side_section>
+        <side_type>1</side_type>
+        <doc_number>T0000001</doc_number>
+        <first_name>Фарход</first_name>
+        <last_name>Тестов</last_name>
+        <middle_name>Алиевич</middle_name>
+        <dob>1985-03-12</dob>
+    </side_section>
+    <side_section>
+        <side_type>2</side_type>
+        <tax_pay_number>010000001</tax_pay_number>
+        <name>ООО Тестовая Компания</name>
+        <leg_org_form>ООО</leg_org_form>
+    </side_section>
+    <suspicious_transaction_description>
+        <is_suspicious>yes</is_suspicious>
+        <doubt_description>Тестовое описание подозрительной операции для fixture-файла (вымышленные данные).</doubt_description>
+        <criterias>99</criterias>
+        <criterias_base>ignore</criterias_base>
+    </suspicious_transaction_description>
+</form_101>

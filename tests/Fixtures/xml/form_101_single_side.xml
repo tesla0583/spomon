@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form_101>
+    <report_name>
+        <role>compliance_officer</role>
+        <first_name>Test</first_name>
+        <last_name>Officer</last_name>
+        <email>officer@example.test</email>
+        <fmcrn>FMCRN-000000</fmcrn>
+    </report_name>
+    <transaction>
+        <transaction_type>20</transaction_type>
+        <transaction_subtype>20.1</transaction_subtype>
+        <details>20.1.2</details>
+    </transaction>
+    <transaction_details>
+        <trans_date>2026-03-01</trans_date>
+        <currency>USD</currency>
+        <amount>500.00</amount>
+        <transaction_desc>Снятие наличных</transaction_desc>
+    </transaction_details>
+    <side_section>
+        <side_type>1</side_type>
+        <doc_number>T0000002</doc_number>
+        <first_name>Азиз</first_name>
+        <last_name>Примеров</last_name>
+    </side_section>
+    <suspicious_transaction_description>
+        <is_suspicious>no</is_suspicious>
+        <doubt_description></doubt_description>
+        <criterias>1</criterias>
+        <criterias_base>ignore</criterias_base>
+    </suspicious_transaction_description>
+</form_101>

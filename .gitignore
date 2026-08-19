@@ -17,3 +17,10 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+/storage/app/spo/incoming/*
+!/storage/app/spo/incoming/.gitkeep
+/storage/app/spo/processed/*
+!/storage/app/spo/processed/.gitkeep
+/storage/app/spo/failed/*
+!/storage/app/spo/failed/.gitkeep

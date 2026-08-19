@@ -1,3 +1,5 @@
 *
 !public/
+!spo/
+!spo/**
 !.gitignore
