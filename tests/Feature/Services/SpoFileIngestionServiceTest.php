@@ -8,6 +8,7 @@ use App\Enums\IngestionStatus;
 use App\Models\Client;
 use App\Models\SpoFileIngestion;
 use App\Models\SpoRaw;
+use App\Repositories\ClientRepository;
 use App\Services\Ingestion\SpoFileIngestionService;
 use App\Services\Xml\Form101Parser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,7 +36,7 @@ final class SpoFileIngestionServiceTest extends TestCase
         File::makeDirectory($this->basePath.'/processed', 0755, true);
         File::makeDirectory($this->basePath.'/failed', 0755, true);
 
-        $this->service = new SpoFileIngestionService(new Form101Parser);
+        $this->service = new SpoFileIngestionService(new Form101Parser, new ClientRepository);
     }
 
     protected function tearDown(): void

@@ -14,6 +14,7 @@ use App\Enums\PartyType;
 use App\Models\Client;
 use App\Models\SpoFileIngestion;
 use App\Models\SpoRaw;
+use App\Repositories\ClientRepository;
 use App\Services\Xml\Form101Parser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\File;
@@ -29,12 +30,16 @@ use Throwable;
  * под другим именем считается самостоятельным файлом. Успешные/неуспешные файлы
  * перемещаются в соседние папки `processed`/`failed`.
  *
- * Матчинг клиента здесь — точное совпадение по doc_number/tax_pay_number
- * (Client::firstOrCreate), без fuzzy-логики. Fuzzy-матчинг — Этап 3.
+ * Матчинг клиента делегирован в App\Repositories\ClientRepository (точное совпадение
+ * по doc_number/tax_pay_number, с fuzzy-fallback по ФИО+ДОБ для физлиц — см. CLAUDE.md,
+ * раздел "Матчинг клиентов" в README.md).
  */
 final class SpoFileIngestionService
 {
-    public function __construct(private readonly Form101Parser $parser) {}
+    public function __construct(
+        private readonly Form101Parser $parser,
+        private readonly ClientRepository $clientRepository,
+    ) {}
 
     public function ingestFromDirectory(string $incomingPath): IngestionSummaryDto
     {
@@ -153,35 +158,14 @@ final class SpoFileIngestionService
     private function findOrCreateClient(PartyDataInterface $party): Client
     {
         if ($party instanceof IndividualPartyDto) {
-            return Client::query()->firstOrCreate(
-                ['doc_number' => $party->docNumber],
-                [
-                    'party_type' => PartyType::Individual,
-                    'first_name' => $party->firstName,
-                    'last_name' => $party->lastName,
-                    'middle_name' => $party->middleName,
-                    'dob' => $party->dob,
-                    'full_name' => $this->buildFullName($party),
-                ],
-            );
+            return $this->clientRepository->findOrCreateIndividual($party);
         }
 
         if ($party instanceof LegalEntityPartyDto) {
-            return Client::query()->firstOrCreate(
-                ['tax_pay_number' => $party->taxPayNumber],
-                [
-                    'party_type' => PartyType::LegalEntity,
-                    'full_name' => $party->name,
-                ],
-            );
+            return $this->clientRepository->findOrCreateLegalEntity($party);
         }
 
         throw new LogicException('Неизвестный тип стороны: '.get_class($party));
-    }
-
-    private function buildFullName(IndividualPartyDto $party): string
-    {
-        return trim(implode(' ', array_filter([$party->lastName, $party->firstName, $party->middleName])));
     }
 
     /**
