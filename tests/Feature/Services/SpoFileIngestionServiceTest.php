@@ -6,6 +6,7 @@ namespace Tests\Feature\Services;
 
 use App\Enums\IngestionStatus;
 use App\Models\Client;
+use App\Models\ClientCard;
 use App\Models\SpoFileIngestion;
 use App\Models\SpoRaw;
 use App\Repositories\ClientRepository;
@@ -13,6 +14,7 @@ use App\Services\Ingestion\SpoFileIngestionService;
 use App\Services\Xml\Form101Parser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 final class SpoFileIngestionServiceTest extends TestCase
@@ -46,8 +48,50 @@ final class SpoFileIngestionServiceTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * persist() дальше дёргает ComputeClientCardJob::dispatch(); с QUEUE_CONNECTION=sync
+     * (дефолт проекта, см. phpunit.xml) джоб выполняется прямо здесь же, синхронно — без
+     * фейкового ответа это был бы реальный вызов api.anthropic.com. Фейк заводится явно
+     * в каждом тесте (а не в setUp()), т.к. Http::fake() при повторном вызове ДОБАВЛЯЕТ
+     * стаб в общий список, а не заменяет — при совпадении побеждает первый
+     * зарегистрированный, так что общий фейк в setUp() нельзя было бы переопределить
+     * под конкретный тест (см. test_llm_card_computation_failure_...).
+     */
+    private function fakeSuccessfulClaudeResponse(): void
+    {
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'id' => 'msg_test',
+                'content' => [
+                    [
+                        'type' => 'tool_use',
+                        'name' => 'submit_client_analysis',
+                        'input' => [
+                            'summary' => 'Тестовая заглушка ответа Claude API.',
+                            'pattern_notes' => null,
+                            'extracted_entities' => [],
+                            'network_signal' => ['found' => false, 'matched_client_reference' => null],
+                            'final_label' => 'единичный случай',
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+    }
+
+    private function fakeFailingClaudeResponse(): void
+    {
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'type' => 'error',
+                'error' => ['type' => 'invalid_request_error', 'message' => '`temperature` is deprecated for this model.'],
+            ], 400),
+        ]);
+    }
+
     public function test_valid_file_is_ingested_creates_client_and_spo_raw_and_moves_to_processed(): void
     {
+        $this->fakeSuccessfulClaudeResponse();
         $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
 
         $summary = $this->service->ingestFromDirectory($this->incomingPath);
@@ -73,6 +117,7 @@ final class SpoFileIngestionServiceTest extends TestCase
 
     public function test_reingesting_identical_file_content_is_skipped_and_does_not_duplicate_records(): void
     {
+        $this->fakeSuccessfulClaudeResponse();
         $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
         $this->service->ingestFromDirectory($this->incomingPath);
 
@@ -92,6 +137,7 @@ final class SpoFileIngestionServiceTest extends TestCase
 
     public function test_retrying_a_previously_failed_file_reprocesses_it_and_can_succeed(): void
     {
+        $this->fakeSuccessfulClaudeResponse();
         $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
         $fileHash = hash('sha256', (string) file_get_contents($this->incomingPath.'/spo_1.xml'));
 
@@ -122,6 +168,7 @@ final class SpoFileIngestionServiceTest extends TestCase
 
     public function test_same_content_under_different_file_name_is_processed_as_separate_file(): void
     {
+        $this->fakeSuccessfulClaudeResponse();
         $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
         $this->service->ingestFromDirectory($this->incomingPath);
 
@@ -145,6 +192,7 @@ final class SpoFileIngestionServiceTest extends TestCase
 
     public function test_second_spo_for_same_client_is_attached_to_existing_client(): void
     {
+        $this->fakeSuccessfulClaudeResponse();
         $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
         $this->service->ingestFromDirectory($this->incomingPath);
 
@@ -179,6 +227,44 @@ final class SpoFileIngestionServiceTest extends TestCase
         $ingestion = SpoFileIngestion::query()->first();
         self::assertSame(IngestionStatus::Failed, $ingestion->status);
         self::assertNotEmpty($ingestion->error_message);
+    }
+
+    public function test_llm_card_computation_failure_does_not_fail_the_file_or_duplicate_spo_raw_on_retry(): void
+    {
+        // Регрессия на реальный инцидент: сбой вызова Claude API (например, невалидный
+        // параметр запроса) НЕ должен переводить уже успешно распарсенный и сохранённый
+        // XML в failed. Раньше сбой ComputeClientCardJob::dispatch() внутри persist()
+        // ловился общим catch()'ем файла — файл уходил в failed, а при retry SpoRaw
+        // сохранялся ПОВТОРНО (дубликат истории СПО у клиента).
+        $this->fakeFailingClaudeResponse();
+
+        $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
+
+        $summary = $this->service->ingestFromDirectory($this->incomingPath);
+
+        // XML разобран и сохранён — это успех обработки файла, а не ошибка.
+        self::assertSame(1, $summary->processedCount);
+        self::assertSame(0, $summary->failedCount);
+        self::assertSame([], $summary->failures);
+        self::assertCount(1, $summary->cardFailures);
+
+        self::assertSame(1, SpoRaw::query()->count());
+        self::assertSame(0, ClientCard::query()->count());
+
+        self::assertFileDoesNotExist($this->incomingPath.'/spo_1.xml');
+        self::assertFileExists($this->basePath.'/processed/spo_1.xml');
+        self::assertFileDoesNotExist($this->basePath.'/failed/spo_1.xml');
+
+        $ingestion = SpoFileIngestion::query()->first();
+        self::assertSame(IngestionStatus::Processed, $ingestion->status);
+        self::assertNull($ingestion->error_message);
+
+        // incoming пуст (файл уже в processed) — повторный прогон ничего не находит и
+        // точно не создаёт вторую SpoRaw-запись для того же клиента.
+        $summary2 = $this->service->ingestFromDirectory($this->incomingPath);
+        self::assertSame(0, $summary2->processedCount);
+        self::assertSame(0, $summary2->skippedCount);
+        self::assertSame(1, SpoRaw::query()->count());
     }
 
     public function test_ingesting_empty_directory_does_not_fail(): void

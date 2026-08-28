@@ -11,6 +11,7 @@ use App\DTOs\PartyDataInterface;
 use App\DTOs\SpoRecordDto;
 use App\Enums\IngestionStatus;
 use App\Enums\PartyType;
+use App\Jobs\ComputeClientCardJob;
 use App\Models\Client;
 use App\Models\SpoFileIngestion;
 use App\Models\SpoRaw;
@@ -33,6 +34,16 @@ use Throwable;
  * Матчинг клиента делегирован в App\Repositories\ClientRepository (точное совпадение
  * по doc_number/tax_pay_number, с fuzzy-fallback по ФИО+ДОБ для физлиц — см. CLAUDE.md,
  * раздел "Матчинг клиентов" в README.md).
+ *
+ * Сохранение XML (parse + persist SpoRaw) и пересчёт карточки клиента через Claude API —
+ * два независимых failure domain. Файл считается успешно обработанным, если он разобран
+ * и SpoRaw сохранён; сбой последующего вызова LLM (например, временная недоступность
+ * api.anthropic.com) НЕ должен переводить файл в failed и НЕ должен приводить к его
+ * повторной обработке — иначе при retry SpoRaw::create() выполнится повторно и создаст
+ * дубликат записи для того же клиента (то же имя+хеш файла лишь сбрасывает
+ * SpoFileIngestion в pending, но сам XML был бы распарсен и сохранён заново). Ошибки
+ * пересчёта карточки собираются отдельно в {@see IngestionSummaryDto::$cardFailures};
+ * повторный пересчёт без повторной загрузки файла — `php artisan spo:recompute-cards`.
  */
 final class SpoFileIngestionService
 {
@@ -49,6 +60,7 @@ final class SpoFileIngestionService
         $skippedCount = 0;
         $failedCount = 0;
         $failures = [];
+        $cardFailures = [];
 
         foreach ($this->listXmlFiles($incomingPath) as $filePath) {
             $fileName = basename($filePath);
@@ -91,7 +103,7 @@ final class SpoFileIngestionService
 
             try {
                 $record = $this->parser->parse($content)->withSourceFile($fileName);
-                $this->persist($record);
+                $client = $this->persist($record);
 
                 $ingestion->fill([
                     'status' => IngestionStatus::Processed,
@@ -110,6 +122,17 @@ final class SpoFileIngestionService
                 $this->moveFile($filePath, $incomingPath, 'failed', $fileName);
                 $failures[$fileName] = $e->getMessage();
                 $failedCount++;
+
+                continue;
+            }
+
+            // Отдельный try — см. докблок класса: сбой здесь не должен откатывать статус
+            // файла на Failed и не должен вызывать повторный парсинг XML при retry.
+            try {
+                ComputeClientCardJob::dispatch($client->id);
+            } catch (Throwable $e) {
+                report($e);
+                $cardFailures[$client->id] = $e->getMessage();
             }
         }
 
@@ -118,6 +141,7 @@ final class SpoFileIngestionService
             skippedCount: $skippedCount,
             failedCount: $failedCount,
             failures: $failures,
+            cardFailures: $cardFailures,
         );
     }
 
@@ -135,7 +159,7 @@ final class SpoFileIngestionService
         return $files === false ? [] : $files;
     }
 
-    private function persist(SpoRecordDto $record): void
+    private function persist(SpoRecordDto $record): Client
     {
         $client = $this->findOrCreateClient($record->client);
 
@@ -153,6 +177,8 @@ final class SpoFileIngestionService
             'ground_text' => $record->groundText,
             'other_side' => $this->otherSideToArray($record->otherSide),
         ]);
+
+        return $client;
     }
 
     private function findOrCreateClient(PartyDataInterface $party): Client

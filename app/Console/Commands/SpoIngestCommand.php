@@ -44,6 +44,16 @@ class SpoIngestCommand extends Command
             }
         }
 
+        if ($summary->cardFailures !== []) {
+            $this->newLine();
+            $this->warn('XML сохранён, но пересчёт карточки клиента через Claude API не удался '
+                .'(файл НЕ будет переобработан повторно — используйте php artisan spo:recompute-cards):');
+
+            foreach ($summary->cardFailures as $clientId => $errorMessage) {
+                $this->line(sprintf('  - клиент #%d: %s', $clientId, $errorMessage));
+            }
+        }
+
         return $summary->failedCount > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

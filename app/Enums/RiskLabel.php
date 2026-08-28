@@ -12,7 +12,8 @@ namespace App\Enums;
  */
 enum RiskLabel: string
 {
-    case Low = 'low';
-    case Medium = 'medium';
-    case High = 'high';
+    case SingleCase = 'single_case';
+    case NeedsAttention = 'needs_attention';
+    case RepeatingPattern = 'repeating_pattern';
+    case PartOfNetwork = 'part_of_network';
 }
