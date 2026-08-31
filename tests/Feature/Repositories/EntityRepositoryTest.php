@@ -101,6 +101,78 @@ final class EntityRepositoryTest extends TestCase
         );
     }
 
+    public function test_shared_entity_produces_structured_edge_rows_for_both_clients(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('компания');
+
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findNetworkGraphEdges($clientA->id);
+        $forB = $this->repository->findNetworkGraphEdges($clientB->id);
+
+        self::assertSame([[
+            'entity_type' => EntityType::Organization->value,
+            'entity_label' => 'компания',
+            'own_client_id' => $clientA->id,
+            'other_client_id' => $clientB->id,
+        ]], $forA);
+
+        self::assertSame([[
+            'entity_type' => EntityType::Organization->value,
+            'entity_label' => 'компания',
+            'own_client_id' => $clientB->id,
+            'other_client_id' => $clientA->id,
+        ]], $forB);
+    }
+
+    public function test_two_distinct_shared_entities_produce_two_edge_rows(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entityOne = $this->createEntity('компания один');
+        $entityTwo = $this->createEntity('компания два');
+
+        $this->mention($entityOne, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entityOne, $clientB, $this->createSpoRaw($clientB));
+        $this->mention($entityTwo, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entityTwo, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findNetworkGraphEdges($clientA->id);
+
+        self::assertCount(2, $forA);
+        self::assertEqualsCanonicalizing(['компания один', 'компания два'], array_column($forA, 'entity_label'));
+    }
+
+    public function test_repeated_mentions_of_the_same_entity_collapse_into_one_edge_row(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('компания');
+
+        // Клиент А дважды упоминает ту же сущность (в двух разных SpoRaw) — без
+        // ->distinct() self-join дал бы 2 строки для одного и того же ребра.
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findNetworkGraphEdges($clientA->id);
+
+        self::assertCount(1, $forA);
+    }
+
+    public function test_client_without_intersections_gets_empty_edges_array(): void
+    {
+        $client = $this->createClient('T0000001', 'Клиент А');
+        $entity = $this->createEntity('компания');
+
+        $this->mention($entity, $client, $this->createSpoRaw($client));
+
+        self::assertSame([], $this->repository->findNetworkGraphEdges($client->id));
+    }
+
     private function createClient(string $docNumber, string $fullName): Client
     {
         return Client::create([

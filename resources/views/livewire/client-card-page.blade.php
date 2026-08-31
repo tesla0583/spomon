@@ -64,6 +64,12 @@
         </div>
     @endif
 
+    {{-- Граф связей --}}
+    <div class="bg-white rounded border border-gray-200 p-6 mt-4">
+        <h2 class="text-lg font-semibold mb-3">Граф связей</h2>
+        <livewire:client-network-graph :client-id="$client->id" />
+    </div>
+
     {{-- История СПО --}}
     <div class="bg-white rounded border border-gray-200 p-6 mt-4">
         <h2 class="text-lg font-semibold mb-3">История СПО</h2>

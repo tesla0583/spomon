@@ -34,6 +34,14 @@ final class ClientRegistryTest extends TestCase
             ->assertDontSee($clientB->full_name);
     }
 
+    public function test_client_full_name_links_to_the_card_page(): void
+    {
+        $client = $this->createClient('T0000001', 'Клиент Один');
+
+        Livewire::test(ClientRegistry::class)
+            ->assertSeeHtml('href="'.route('clients.show', $client).'"');
+    }
+
     private function createClient(string $docNumber, string $fullName): Client
     {
         return Client::create([

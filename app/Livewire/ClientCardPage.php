@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Enums\EntityType;
 use App\Enums\PartyType;
 use App\Models\Client;
 use App\Repositories\EntityRepository;
@@ -28,14 +29,36 @@ final class ClientCardPage extends Component
     {
         $spoHistory = $this->client->spoRaws()->orderBy('transaction_date')->get();
 
-        $networkReferences = app(EntityRepository::class)
-            ->findKnownNetworkEntityReferences($this->client->id);
-
         return view('livewire.client-card-page', [
             'card' => $this->client->card,
             'spoHistory' => $spoHistory,
-            'networkReferences' => $networkReferences,
+            'networkReferences' => $this->networkReferences(),
         ]);
+    }
+
+    /**
+     * Человекочитаемый список известных связей клиента — та же логика пересечения
+     * сущностей, что и в App\Repositories\EntityRepository::findKnownNetworkEntityReferences()
+     * (используется для промпта Claude API и не меняется, т.к. её вывод завязан на
+     * существующие тесты и content, отправляемый в LLM), но с именем другого клиента
+     * вместо голого client_id — это чисто для отображения на карточке.
+     *
+     * @return array<int, string>
+     */
+    private function networkReferences(): array
+    {
+        $edges = app(EntityRepository::class)->findNetworkGraphEdges($this->client->id);
+
+        $otherClientNames = Client::query()
+            ->whereIn('id', array_column($edges, 'other_client_id'))
+            ->pluck('full_name', 'id');
+
+        return array_map(static fn (array $edge): string => sprintf(
+            '%s "%s" уже встречался в СПО клиента %s',
+            EntityType::from($edge['entity_type'])->displayLabel(),
+            $edge['entity_label'],
+            $otherClientNames[$edge['other_client_id']] ?? sprintf('#%d', $edge['other_client_id']),
+        ), $edges);
     }
 
     /**

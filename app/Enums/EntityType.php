@@ -16,4 +16,18 @@ enum EntityType: string
     case Person = 'person';
     case Address = 'address';
     case Unknown = 'unknown';
+
+    /**
+     * Русское отображаемое название типа сущности для UI/текстовых сообщений о связях
+     * — см. {@see \App\Repositories\EntityRepository::findKnownNetworkEntityReferences()}
+     * и {@see \App\Livewire\ClientCardPage::networkReferences()}.
+     */
+    public function displayLabel(): string
+    {
+        return match ($this) {
+            self::Address => 'адрес',
+            self::Bank => 'банк',
+            self::Organization, self::Person, self::Unknown => 'контрагент',
+        };
+    }
 }

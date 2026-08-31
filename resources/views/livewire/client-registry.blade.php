@@ -17,24 +17,22 @@
                     <th class="px-4 py-2">Документ</th>
                     <th class="px-4 py-2">Риск</th>
                     <th class="px-4 py-2">СПО</th>
-                    <th class="px-4 py-2"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($clients as $client)
                     <tr wire:key="client-{{ $client->id }}">
-                        <td class="px-4 py-2">{{ $client->full_name }}</td>
+                        <td class="px-4 py-2">
+                            <a href="{{ route('clients.show', $client) }}" class="text-blue-600 hover:underline">{{ $client->full_name }}</a>
+                        </td>
                         <td class="px-4 py-2">{{ $client->party_type === \App\Enums\PartyType::Individual ? 'Физлицо' : 'Юрлицо' }}</td>
                         <td class="px-4 py-2">{{ $client->doc_number ?: $client->tax_pay_number ?: '—' }}</td>
                         <td class="px-4 py-2"><x-risk-badge :label="$client->card?->risk_label" /></td>
                         <td class="px-4 py-2">{{ $client->spo_raws_count }}</td>
-                        <td class="px-4 py-2">
-                            <a href="{{ route('clients.show', $client) }}" class="text-blue-600 hover:underline">Открыть</a>
-                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-gray-500">Клиенты не найдены</td>
+                        <td colspan="5" class="px-4 py-6 text-center text-gray-500">Клиенты не найдены</td>
                     </tr>
                 @endforelse
             </tbody>
