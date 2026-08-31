@@ -1,0 +1,59 @@
+<form_101 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="report_banks.xsd">
+
+  <report_name id="0">
+    <role>Подотчетная организация ОАО Банк Симург</role>
+    <account_fullname>Наргис Раджабова</account_fullname>
+    <email>n.rajabova@example.test</email>
+    <fmcrn>10100001</fmcrn>
+  </report_name>
+
+  <transaction id="0">
+    <transaction_type>10.6</transaction_type>
+    <transaction_type_hidden>10.6</transaction_type_hidden>
+    <details_text>Перевод средств с карты на карту (P2P) СберБанк</details_text>
+    <transaction_method>1</transaction_method>
+  </transaction>
+
+  <transaction_details id="0">
+    <trans_date>2025-03-20</trans_date>
+    <currency>TJS</currency>
+    <amount>647</amount>
+    <amount_nc>647</amount_nc>
+    <transaction_desc>Перевод средств с карты на карту (P2P) СберБанк</transaction_desc>
+  </transaction_details>
+
+  <side_section id="0">
+    <side_type>1</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>Насрулло</first_name>
+    <last_name>Каримов</last_name>
+    <middle_name>Салимович</middle_name>
+    <dob>2001-06-05</dob>
+    <citizenship>TJ</citizenship>
+    <doc_type>1</doc_type>
+    <doc_number>А06327104</doc_number>
+    <date_of_issue>2021-02-24</date_of_issue>
+    <bank>ФИЛИАЛИ ЧСК "БОНКИ СИМУРГ" ДАР Н.ШОХМАНСУР</bank>
+    <bank_country>TJ</bank_country>
+    <bic>470103000</bic>
+    <bank_account>20216972500240758213</bank_account>
+    <country>TJ</country>
+    <region>Хатлон</region>
+    <city>Панч</city>
+    <address>р Панч, Ч/Д Дусти д.Наврӯз</address>
+  </side_section>
+
+  <suspicious_transaction_description id="0">
+    <is_suspicious>yes</is_suspicious>
+    <criterias_base>
+      <standard>2</standard>
+    </criterias_base>
+    <criterias>
+      <standard>21</standard>
+    </criterias>
+    <doubt_description>1054: муштари тарики суратхисоби худ амалиётхои бо фаъолияти сохибкори алокамандро гузаронида аз пардохти андоз убур карда истодааст. Эхтимол корти пардохтии муштари дар ихтиёри Расулов Диловар буда, он дар накшахои каллоби истифода шудааст. Мувофики маълумот аз санчиши дахлдор маълум гашт, ки ба суратхисоби муштари аз иштирокчиёни бозихои номаълум маблаг ворид шудааст. Ба суратхисоби муштари дар давраи 01.12.2024-19.03.2025 676 интиколи маблаг аз 172 интиколдиханда дар хачми 2 316 204,58 рубли руси ворид гаштааст. Муштари маблагхои воридгаштаро ба кортхои шахсони сеюм гузаронида, эхтимолан фаъолияти миёнаравиро ба рох мондааст. Маълумоти муфассал оид ба амалиетхои муштари ба сурогаи FIU@example.test ирсол карда шуд.</doubt_description>
+    <transaction_rejected>no</transaction_rejected>
+    <transaction_freezed>no</transaction_freezed>
+  </suspicious_transaction_description>
+
+</form_101>

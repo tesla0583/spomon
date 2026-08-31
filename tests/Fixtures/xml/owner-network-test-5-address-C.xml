@@ -1,0 +1,59 @@
+<form_101 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="report_banks.xsd">
+
+  <report_name id="0">
+    <role>Подотчетная организация ОАО Банк Симург</role>
+    <account_fullname>Наргис Раджабова</account_fullname>
+    <email>n.rajabova@example.test</email>
+    <fmcrn>10100001</fmcrn>
+  </report_name>
+
+  <transaction id="0">
+    <transaction_type>10.6</transaction_type>
+    <transaction_type_hidden>10.6</transaction_type_hidden>
+    <details_text>Перевод средств с карты на карту (P2P) Тинькофф</details_text>
+    <transaction_method>1</transaction_method>
+  </transaction>
+
+  <transaction_details id="0">
+    <trans_date>2025-03-18</trans_date>
+    <currency>TJS</currency>
+    <amount>1156</amount>
+    <amount_nc>1156</amount_nc>
+    <transaction_desc>Перевод средств с карты на карту (P2P) Тинькофф</transaction_desc>
+  </transaction_details>
+
+  <side_section id="0">
+    <side_type>1</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>Зарина</first_name>
+    <last_name>Хамидова</last_name>
+    <middle_name>Абдуллоевна</middle_name>
+    <dob>1972-02-27</dob>
+    <citizenship>TJ</citizenship>
+    <doc_type>1</doc_type>
+    <doc_number>А07564832</doc_number>
+    <date_of_issue>2020-02-13</date_of_issue>
+    <bank>ЧСК "БОНКИ СИМУРГ" ДАР Ш.ХУЧАНД (САРБОНК)</bank>
+    <bank_country>TJ</bank_country>
+    <bic>470103000</bic>
+    <bank_account>20216972501000629478</bank_account>
+    <country>TJ</country>
+    <region>Сугд</region>
+    <city>Хучанд</city>
+    <address>г Хучанд, кучаи Исмоили Сомони 45, дом 9, кв 12</address>
+  </side_section>
+
+  <suspicious_transaction_description id="0">
+    <is_suspicious>yes</is_suspicious>
+    <criterias_base>
+      <standard>2</standard>
+    </criterias_base>
+    <criterias>
+      <standard>21</standard>
+    </criterias>
+    <doubt_description>1054: ба суратхисоби муштари дар давраи 05.02.2025-17.03.2025 2082 интикол аз 2033 интиколдиханда дар хачми умумии 3 772 046,66 рубли руси ворид гаштааст. Эхтимолан муштари аз пардохти андозхо аз фаъолияти сохибкори убур карда истодааст. Маълумоти иловаги ба сурогаи FIU@example.test ирсол карда шуд.</doubt_description>
+    <transaction_rejected>no</transaction_rejected>
+    <transaction_freezed>no</transaction_freezed>
+  </suspicious_transaction_description>
+
+</form_101>

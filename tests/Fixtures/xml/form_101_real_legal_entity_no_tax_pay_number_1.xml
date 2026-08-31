@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<form_101 xsi:noNamespaceSchemaLocation="report_banks.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <report_name id="0">
+            <role>Подотчетная организация ОАО Банк Симург</role>
+            <account_fullname>Далер Каримов</account_fullname>
+            <email>d.karimov@example.test</email>
+            <fmcrn>10100001</fmcrn>
+        </report_name>
+        <transaction id="0">
+            <transaction_type>10.3</transaction_type>
+            <transaction_type_hidden>10.3</transaction_type_hidden>
+            <transaction_subtype>10.3.1</transaction_subtype>
+            <details>10.3.1</details>
+        </transaction>
+        <transaction_details id="0">
+            <trans_date>2026-07-06</trans_date>
+            <currency>USD</currency>
+            <amount>3600</amount>
+            <amount_nc>33415</amount_nc>
+            <transaction_desc>HS CIVIL USE PREPAYMENT FOR MEDICINES ACC. TO THE CONTRACT 1 DD 01.09.2025, PRO-FORMA INVOICE 1140000438 DD 06.01.2026</transaction_desc>
+        </transaction_details>
+        <side_section id="0">
+            <side_type>1</side_type>
+            <side_subtype>3</side_subtype>
+            <name>ЧДММ "Осиё Дору"</name>
+            <tax_pay_number>040087261</tax_pay_number>
+            <leg_org_form>1.1</leg_org_form>
+            <bank>ФИЛИАЛИ ЧСК "БОНКИ СИМУРГ" ДАР Н.ШОХМАНСУР</bank>
+            <bank_country>TJ</bank_country>
+            <bic>470103000</bic>
+            <bank_account>20206840200240938517</bank_account>
+            <country>TJ</country>
+            <region>Душанбе</region>
+            <city>Душанбе</city>
+            <address>Кучаи Рудаки, дом 34</address>
+        </side_section>
+        <side_section id="1">
+            <side_type>4</side_type>
+            <side_subtype>3</side_subtype>
+            <name>ZENITH PHARMA LIMITED</name>
+            <bank>MERIDIAN COMMERCIAL BANK LIMITED(MAIN BRANCH)</bank>
+            <bank_country>PK</bank_country>
+            <bic>MRCBPKKA001</bic>
+            <bank_account>PK55MRCB0101889234501122</bank_account>
+            <country>PK</country>
+            <region>Karachi</region>
+            <city>Karachi</city>
+            <address>ZENITH PHARMA B-22 S.I.T.E MANGOPEER ROAD</address>
+        </side_section>
+        <suspicious_transaction_description id="0">
+            <is_suspicious>yes</is_suspicious>
+            <criterias_base>
+				<standard>1</standard></criterias_base>
+            <criterias>
+				<standard>21</standard></criterias>
+            <doubt_description>Тибки талаботи руйхати минтакахои дорои хавфи баланд, ирсол карда мешавад.</doubt_description>
+            <transaction_rejected>no</transaction_rejected>
+            <transaction_freezed>no</transaction_freezed>
+        </suspicious_transaction_description>
+</form_101>

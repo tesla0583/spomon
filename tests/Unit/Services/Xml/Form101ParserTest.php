@@ -59,6 +59,30 @@ final class Form101ParserTest extends TestCase
         self::assertNull($record->amountNc);
     }
 
+    public function test_translates_cyrillic_homoglyph_in_other_side_doc_number_tag(): void
+    {
+        // Реальный наблюдаемый случай: контрагент второй стороны использует тег
+        // <doс_number> с кириллической "с" вместо латинской. См. докблок
+        // Form101Parser::CYRILLIC_HOMOGLYPHS.
+        $record = $this->parser->parse($this->fixture('form_101_real_homoglyph_doc_number_1.xml'));
+
+        self::assertInstanceOf(IndividualPartyDto::class, $record->otherSide);
+        self::assertSame('1401-0500-93417', $record->otherSide->docNumber);
+        self::assertSame('QODIRI', $record->otherSide->firstName);
+        self::assertSame('OMAR', $record->otherSide->lastName);
+    }
+
+    public function test_parses_legal_entity_other_side_without_tax_pay_number(): void
+    {
+        // Реальный наблюдаемый случай: иностранный контрагент-юрлицо без местного ИНН
+        // (нет тега <tax_pay_number> вообще).
+        $record = $this->parser->parse($this->fixture('form_101_real_legal_entity_no_tax_pay_number_1.xml'));
+
+        self::assertInstanceOf(LegalEntityPartyDto::class, $record->otherSide);
+        self::assertNull($record->otherSide->taxPayNumber);
+        self::assertSame('ZENITH PHARMA LIMITED', $record->otherSide->name);
+    }
+
     public function test_throws_unsupported_xml_format_exception_for_legacy_report_root(): void
     {
         $this->expectException(UnsupportedXmlFormatException::class);

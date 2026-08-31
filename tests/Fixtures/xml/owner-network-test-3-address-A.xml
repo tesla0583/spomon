@@ -1,0 +1,59 @@
+<form_101 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="report_banks.xsd">
+
+  <report_name id="0">
+    <role>Подотчетная организация ОАО Банк Симург</role>
+    <account_fullname>Наргис Раджабова</account_fullname>
+    <email>n.rajabova@example.test</email>
+    <fmcrn>10100001</fmcrn>
+  </report_name>
+
+  <transaction id="0">
+    <transaction_type>10.6</transaction_type>
+    <transaction_type_hidden>10.6</transaction_type_hidden>
+    <details_text>Списание средств со счета клиента, связанное с использованием пластиковой карты</details_text>
+    <transaction_method>1</transaction_method>
+  </transaction>
+
+  <transaction_details id="0">
+    <trans_date>2025-03-17</trans_date>
+    <currency>TJS</currency>
+    <amount>100000</amount>
+    <amount_nc>100000</amount_nc>
+    <transaction_desc>Списание средств со счета клиента, связанное с использованием пластиковой карты</transaction_desc>
+  </transaction_details>
+
+  <side_section id="0">
+    <side_type>1</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>Фаррух</first_name>
+    <last_name>Латипов</last_name>
+    <middle_name>Саидович</middle_name>
+    <dob>1999-11-02</dob>
+    <citizenship>TJ</citizenship>
+    <doc_type>1</doc_type>
+    <doc_number>А08453917</doc_number>
+    <date_of_issue>2018-03-01</date_of_issue>
+    <bank>ФИЛИАЛИ ЧСК "БОНКИ СИМУРГ" ДАР Ш.ХИСОР</bank>
+    <bank_country>TJ</bank_country>
+    <bic>470103000</bic>
+    <bank_account>20216972900170582341</bank_account>
+    <country>TJ</country>
+    <region>Сугд</region>
+    <city>Хучанд</city>
+    <address>г Хучанд, кучаи Исмоили Сомони 45, дом 9, кв 12</address>
+  </side_section>
+
+  <suspicious_transaction_description id="0">
+    <is_suspicious>yes</is_suspicious>
+    <criterias_base>
+      <standard>2</standard>
+    </criterias_base>
+    <criterias>
+      <standard>21</standard>
+    </criterias>
+    <doubt_description>1054: Ба суратхисоби муштари дар давраи 01.12.2024-03.03.2025 сол 472 адад интиколи маблаг дар хачми 13 665 524,64 рубли руси интиколи маблаг ворид шудааст. Мувофики натичаи санчиши дахлдор муштари бо хариду фуруши криптоасъор машгул аст. Маълумоти иловаги ба сурогаи FIU@example.test ирсол карда шудааст.</doubt_description>
+    <transaction_rejected>no</transaction_rejected>
+    <transaction_freezed>no</transaction_freezed>
+  </suspicious_transaction_description>
+
+</form_101>

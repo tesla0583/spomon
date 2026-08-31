@@ -13,4 +13,11 @@ use App\Enums\PartyType;
 interface PartyDataInterface
 {
     public function partyType(): PartyType;
+
+    /**
+     * Физический адрес стороны (`side_section.address`), если был указан. Используется
+     * для регистрации сущности-адреса в графе связей — см.
+     * {@see \App\Services\Entities\EntityRegistrationService::registerAddressMention()}.
+     */
+    public function address(): ?string;
 }

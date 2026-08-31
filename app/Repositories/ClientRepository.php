@@ -15,7 +15,10 @@ use Illuminate\Support\Collection;
  * Матчинг и создание клиентов. См. CLAUDE.md, разделы "Архитектурные принципы" и
  * "Схема БД (MVP)" — репозиторий здесь оправдан, т.к. матчинг клиента — не простой CRUD.
  *
- * Юрлицо — точное совпадение по tax_pay_number, без исключений.
+ * Юрлицо — точное совпадение по tax_pay_number, без исключений. Если tax_pay_number
+ * отсутствует (иностранное юрлицо без местного ИНН) — дедупликация не выполняется вообще,
+ * всегда создаётся новый клиент: у юрлица без ИНН нет устойчивого идентификатора, а
+ * ложное объединение двух разных компаний в истории СПО хуже пропущенного совпадения.
  *
  * Физлицо — сначала точное совпадение по doc_number (приоритетно). Если его нет или
  * оно не найдено — fuzzy-fallback: среди клиентов с той же датой рождения ищем
@@ -65,6 +68,16 @@ final class ClientRepository
 
     public function findOrCreateLegalEntity(LegalEntityPartyDto $party): Client
     {
+        if ($party->taxPayNumber === null) {
+            // Никогда не матчим по null tax_pay_number — иначе firstOrCreate() смэтчит
+            // между собой вообще все юрлица без ИНН по WHERE tax_pay_number IS NULL.
+            return Client::create([
+                'party_type' => PartyType::LegalEntity,
+                'tax_pay_number' => null,
+                'full_name' => $party->name,
+            ]);
+        }
+
         return Client::query()->firstOrCreate(
             ['tax_pay_number' => $party->taxPayNumber],
             [

@@ -250,6 +250,42 @@ final class SpoFileIngestionServiceTest extends TestCase
         self::assertNotEmpty($ingestion->error_message);
     }
 
+    public function test_contra_party_with_homoglyph_doc_number_is_ingested_successfully(): void
+    {
+        // Регрессия: раньше этот реальный файл падал в failed, т.к. <doс_number>
+        // контрагента (кириллическая "с") не распознавался как doc_number.
+        $this->fakeSuccessfulClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_real_homoglyph_doc_number_1.xml', 'spo_1.xml');
+
+        $summary = $this->service->ingestFromDirectory($this->incomingPath);
+
+        self::assertSame(1, $summary->processedCount);
+        self::assertSame(0, $summary->failedCount);
+        self::assertSame([], $summary->failures);
+
+        self::assertSame(1, SpoRaw::query()->count());
+        self::assertFileExists($this->basePath.'/processed/spo_1.xml');
+        self::assertFileDoesNotExist($this->basePath.'/failed/spo_1.xml');
+    }
+
+    public function test_legal_entity_contra_party_without_tax_pay_number_is_ingested_successfully(): void
+    {
+        // Регрессия: раньше этот реальный файл падал в failed, т.к. юрлицо-контрагент без
+        // tax_pay_number (иностранная компания без местного ИНН) не распознавалось.
+        $this->fakeSuccessfulClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_real_legal_entity_no_tax_pay_number_1.xml', 'spo_1.xml');
+
+        $summary = $this->service->ingestFromDirectory($this->incomingPath);
+
+        self::assertSame(1, $summary->processedCount);
+        self::assertSame(0, $summary->failedCount);
+        self::assertSame([], $summary->failures);
+
+        self::assertSame(1, SpoRaw::query()->count());
+        self::assertFileExists($this->basePath.'/processed/spo_1.xml');
+        self::assertFileDoesNotExist($this->basePath.'/failed/spo_1.xml');
+    }
+
     public function test_llm_card_computation_failure_does_not_fail_the_file_or_duplicate_spo_raw_on_retry(): void
     {
         // Регрессия на реальный инцидент: сбой вызова Claude API (например, невалидный

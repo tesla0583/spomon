@@ -184,6 +184,16 @@ final class SpoFileIngestionService
         // сохранение XML" (не LLM), см. докблок класса.
         $this->entityRegistrationService->registerStructuredMention($spoRaw, $record->otherSide);
 
+        // Общий физический адрес — самостоятельный AML-сигнал графа связей
+        // (entities.entity_type = address). Оба вызова используют client_id клиента банка
+        // (а не "чей" адрес по смыслу поля) — именно у этого клиента адрес проявился
+        // в отчёте, будь то его собственный адрес или адрес контрагента.
+        $this->entityRegistrationService->registerAddressMention($client->id, $spoRaw, $record->client->address());
+
+        if ($record->otherSide !== null) {
+            $this->entityRegistrationService->registerAddressMention($client->id, $spoRaw, $record->otherSide->address());
+        }
+
         return $client;
     }
 

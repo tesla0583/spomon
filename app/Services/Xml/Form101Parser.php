@@ -16,6 +16,23 @@ final class Form101Parser
 {
     private const ROOT_TAG = 'form_101';
 
+    /**
+     * Карта кириллических гомоглифов латинских букв → латиница, для имён тегов.
+     *
+     * Реальный наблюдаемый случай: экспортирующая система банка на части файлов пишет тег
+     * документа контрагента как `<doс_number>`, где третья буква — кириллическая "с"
+     * (U+0441), а не латинская "c" (U+0063), — похоже на перепутанную раскладку клавиатуры
+     * при формировании выгрузки. `SimpleXMLElement::children()` итерирует по буквальному
+     * имени тега, поэтому без транслитерации `$data['doc_number'] ?? null` возвращал null,
+     * хотя значение физически присутствовало под "похожим" ключом. Подтверждено на файлах
+     * KARIMI JAWAD, Каримова Дилноза Файзуллоевна, Холова Шабнам Раджабовна
+     * (side_section id="1", контрагент, выгрузка от 11.08.2026).
+     */
+    private const CYRILLIC_HOMOGLYPHS = [
+        'а' => 'a', 'е' => 'e', 'о' => 'o', 'р' => 'p', 'с' => 'c', 'х' => 'x', 'у' => 'y',
+        'А' => 'A', 'Е' => 'E', 'О' => 'O', 'Р' => 'P', 'С' => 'C', 'Х' => 'X', 'У' => 'Y',
+    ];
+
     public function parse(string $xmlContent): SpoRecordDto
     {
         $xml = $this->loadXml($xmlContent);
@@ -96,10 +113,21 @@ final class Form101Parser
         $result = [];
 
         foreach ($element->children() as $name => $child) {
-            $result[$name] = $this->nullableString($child);
+            $result[$this->normalizeTagName($name)] = $this->nullableString($child);
         }
 
         return $result;
+    }
+
+    /**
+     * Транслитерирует кириллические гомоглифы латинских букв в имени тега (см.
+     * {@see self::CYRILLIC_HOMOGLYPHS}). Затрагивает только имя тега, не значение —
+     * значения на таджикском/русском (например, `doubt_description`) должны остаться
+     * как есть.
+     */
+    private function normalizeTagName(string $name): string
+    {
+        return strtr($name, self::CYRILLIC_HOMOGLYPHS);
     }
 
     private function nullableString(SimpleXMLElement $node): ?string

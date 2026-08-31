@@ -1,0 +1,59 @@
+<form_101 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="report_banks.xsd">
+
+  <report_name id="0">
+    <role>Подотчетная организация ОАО Банк Симург</role>
+    <account_fullname>Наргис Раджабова</account_fullname>
+    <email>n.rajabova@example.test</email>
+    <fmcrn>10100001</fmcrn>
+  </report_name>
+
+  <transaction id="0">
+    <transaction_type>10.6</transaction_type>
+    <transaction_type_hidden>10.6</transaction_type_hidden>
+    <details_text>Перевод средств с карты на карту (P2P) СберБанк</details_text>
+    <transaction_method>1</transaction_method>
+  </transaction>
+
+  <transaction_details id="0">
+    <trans_date>2025-09-11</trans_date>
+    <currency>TJS</currency>
+    <amount>600</amount>
+    <amount_nc>600</amount_nc>
+    <transaction_desc>Перевод средств с карты на карту (P2P) СберБанк</transaction_desc>
+  </transaction_details>
+
+  <side_section id="0">
+    <side_type>1</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>Sherali</first_name>
+    <last_name>Nazarov</last_name>
+    <middle_name>Rustamovich</middle_name>
+    <dob>1988-12-19</dob>
+    <citizenship>UZ</citizenship>
+    <doc_type>5</doc_type>
+    <doc_number>PFC0812534</doc_number>
+    <date_of_issue>2024-11-06</date_of_issue>
+    <bank>ФИЛИАЛИ ЧСК "БОНКИ СИМУРГ" ДАР Ш.ДУШАНБЕ</bank>
+    <bank_country>TJ</bank_country>
+    <bic>470103000</bic>
+    <bank_account>20226972500020847215</bank_account>
+    <country>TJ</country>
+    <region>Сугд</region>
+    <city>Хучанд</city>
+    <address>г Хучанд, кучаи Исмоили Сомони 45, дом 9, кв 12</address>
+  </side_section>
+
+  <suspicious_transaction_description id="0">
+    <is_suspicious>yes</is_suspicious>
+    <criterias_base>
+      <standard>2</standard>
+    </criterias_base>
+    <criterias>
+      <standard>21</standard>
+    </criterias>
+    <doubt_description>1054: ба суратхисоби муштари дар давраи 07.04.2025-09.04.2025 305 интикол аз 234 интиколдиханда дар хачми умумии 996945.44 рубли руси ворид гаштааст. Мувофики маълумот аз санчиши дахлдори муштари маблагхои воридшуда бо сохибкори алокаманд буда, муштари оид ба амалиётхо маълумот надорад, эхтимол корти пардохтии муштари дар ихтиёри шахси сеюм карор дорад.</doubt_description>
+    <transaction_rejected>no</transaction_rejected>
+    <transaction_freezed>no</transaction_freezed>
+  </suspicious_transaction_description>
+
+</form_101>

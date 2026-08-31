@@ -18,10 +18,16 @@ final class IndividualPartyDto implements PartyDataInterface
         public readonly string $lastName,
         public readonly ?string $middleName = null,
         public readonly ?string $dob = null,
+        public readonly ?string $address = null,
     ) {}
 
     public function partyType(): PartyType
     {
         return PartyType::Individual;
+    }
+
+    public function address(): ?string
+    {
+        return $this->address;
     }
 }

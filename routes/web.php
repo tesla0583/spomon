@@ -1,5 +1,8 @@
 <?php
 
+use App\Livewire\ClientCardPage;
+use App\Livewire\ClientRegistry;
+use App\Livewire\SpoStatisticsPage;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/clients');
+
+Route::get('/clients', ClientRegistry::class)->name('clients.index');
+Route::get('/clients/{client}', ClientCardPage::class)->name('clients.show');
+Route::get('/stats', SpoStatisticsPage::class)->name('stats.index');

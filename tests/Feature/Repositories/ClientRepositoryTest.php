@@ -185,4 +185,39 @@ final class ClientRepositoryTest extends TestCase
         self::assertNotSame($existing->id, $anotherResult->id);
         self::assertSame(2, Client::query()->count());
     }
+
+    public function test_two_different_legal_entities_without_tax_pay_number_are_not_merged(): void
+    {
+        // Регрессия на реальный AML-риск: firstOrCreate(['tax_pay_number' => null], ...)
+        // смэтчил бы между собой вообще все юрлица без ИНН по WHERE tax_pay_number IS NULL,
+        // склеив историю СПО никак не связанных иностранных компаний.
+        $first = $this->repository->findOrCreateLegalEntity(new LegalEntityPartyDto(
+            taxPayNumber: null,
+            name: 'ZENITH PHARMA LIMITED',
+        ));
+
+        $second = $this->repository->findOrCreateLegalEntity(new LegalEntityPartyDto(
+            taxPayNumber: null,
+            name: 'ORION TRADE ENTERPRISES',
+        ));
+
+        self::assertNotSame($first->id, $second->id);
+        self::assertSame(2, Client::query()->count());
+        self::assertNull($first->tax_pay_number);
+        self::assertNull($second->tax_pay_number);
+    }
+
+    public function test_legal_entity_without_tax_pay_number_is_never_deduplicated_even_with_identical_name(): void
+    {
+        // Осознанное поведение, не баг: без устойчивого идентификатора дедупликация юрлица
+        // без ИНН невозможна надёжно, поэтому даже идентичное название создаёт нового
+        // клиента при каждом вызове.
+        $party = new LegalEntityPartyDto(taxPayNumber: null, name: 'ZENITH PHARMA LIMITED');
+
+        $first = $this->repository->findOrCreateLegalEntity($party);
+        $second = $this->repository->findOrCreateLegalEntity($party);
+
+        self::assertNotSame($first->id, $second->id);
+        self::assertSame(2, Client::query()->count());
+    }
 }

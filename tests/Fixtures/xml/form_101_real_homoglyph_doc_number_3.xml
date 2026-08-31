@@ -1,0 +1,74 @@
+
+<form_101 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="report_banks.xsd">
+
+  <report_name id="0">
+    <role>Подотчетная организация ОАО Банк Симург</role>
+    <account_fullname>Наргис Раджабова</account_fullname>
+    <email>n.rajabova@example.test</email>
+    <fmcrn>10100001</fmcrn>
+  </report_name>
+
+  <transaction id="0">
+    <transaction_type>10.3</transaction_type>
+    <transaction_type_hidden>10.3</transaction_type_hidden>
+    <transaction_subtype>10.3.8</transaction_subtype>
+    <details>10.3.3</details>
+  </transaction>
+
+  <transaction_details id="0">
+    <trans_date>2026-08-05</trans_date>
+    <currency>USD</currency>
+    <amount>2000</amount>
+    <amount_nc>18492</amount_nc>
+    <transaction_desc>Помощь близким (Western Union)</transaction_desc>
+  </transaction_details>
+
+  <side_section id="0">
+    <side_type>1</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>Холова</first_name>
+    <last_name>Шабнам</last_name>
+    <middle_name>Раджабовна</middle_name>
+    <dob>1985-09-30</dob>
+    <citizenship>TJ</citizenship>
+    <doc_type>1</doc_type>
+    <doc_number>А02845916</doc_number>
+    <date_of_issue>2026-04-20</date_of_issue>
+    <bank>Филиали ЧСК "Бонки Симург" дар ш.Душанбе</bank>
+    <bank_country>TJ</bank_country>
+    <bic>470103000</bic>
+    <country>TJ</country>
+    <region>вилояти Сугд</region>
+    <city>Айни</city>
+    <address>Айни Чамоати Зарафшон дехаи гулбог д.- кв\офф</address>
+  </side_section>
+
+  <side_section id="1">
+    <side_type>4</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>NURMATOV</first_name>
+    <last_name>SODIQ</last_name>
+    <middle_name></middle_name>
+    <dob>1993-02-14</dob>
+    <doс_number>FB4271605</doс_number>
+    <date_of_issue></date_of_issue>
+    <bank_country>LY</bank_country>
+    <country>LY</country>
+    <city>BENGHAZI</city>
+  </side_section>
+
+  <suspicious_transaction_description id="0">
+    <is_suspicious>yes</is_suspicious>
+    <criterias_base>
+      <standard>1</standard>
+    </criterias_base>
+    <criterias>
+      <standard>21</standard>
+    </criterias>
+    <doubt_description>Тибки талаботи руйхати кишвархои дорои хавфи баланд ирсол карда мешавад.</doubt_description>
+    <transaction_rejected>no</transaction_rejected>
+    <transaction_freezed>no</transaction_freezed>
+  </suspicious_transaction_description>
+
+</form_101>
+

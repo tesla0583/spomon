@@ -20,14 +20,18 @@ use App\Support\EntityNormalizer;
  * построения графа связей между клиентами — см. CLAUDE.md, таблицы `entities`/
  * `entity_mentions` и раздел "Логика вызова Claude API".
  *
- * Два независимых источника, два независимых публичных метода:
+ * Независимые источники, независимые публичные методы:
  * - {@see self::registerStructuredMention()} — вторая сторона СПО из структурных полей
  *   XML (часть домена "успешное сохранение XML", вызывается из
  *   App\Services\Ingestion\SpoFileIngestionService::persist());
+ * - {@see self::registerAddressMention()} — физический адрес стороны СПО (клиента банка
+ *   и/или контрагента) как отдельный AML-сигнал графа связей (общий адрес — общий
+ *   "почтовый ящик"), тоже часть домена "успешное сохранение XML", вызывается из
+ *   App\Services\Ingestion\SpoFileIngestionService::persist();
  * - {@see self::registerNerMentions()} — контрагенты, извлечённые LLM (NER) из свободного
  *   текста, вызывается из App\Jobs\ComputeClientCardJob после успешного пересчёта карточки.
  *
- * Оба метода идемпотентны (firstOrCreate по normalized_name / составному ключу
+ * Все методы идемпотентны (firstOrCreate по normalized_name / составному ключу
  * упоминания) — повторный вызов с теми же данными не создаёт дублей.
  */
 final class EntityRegistrationService
@@ -45,6 +49,21 @@ final class EntityRegistrationService
         }
 
         $this->registerMention($rawName, $entityType, $spoRaw->client_id, $spoRaw->id, EntityMentionSource::Structured);
+    }
+
+    /**
+     * Регистрирует физический адрес стороны СПО как сущность графа связей
+     * ({@see EntityType::Address}). Общий адрес у разных клиентов — реальный AML-сигнал
+     * (общий "почтовый ящик"/квартира для дропов), поэтому регистрируется наравне с
+     * контрагентом, а не как вспомогательное поле.
+     */
+    public function registerAddressMention(int $clientId, SpoRaw $spoRaw, ?string $address): void
+    {
+        if ($address === null) {
+            return;
+        }
+
+        $this->registerMention($address, EntityType::Address, $clientId, $spoRaw->id, EntityMentionSource::Structured);
     }
 
     /**

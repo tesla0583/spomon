@@ -87,6 +87,45 @@ final class EntityRegistrationServiceTest extends TestCase
         self::assertSame(0, EntityMention::query()->count());
     }
 
+    public function test_registers_address_mention_with_address_entity_type(): void
+    {
+        $spoRaw = $this->createSpoRaw();
+
+        $this->service->registerAddressMention($spoRaw->client_id, $spoRaw, 'г Хучанд, кучаи Исмоили Сомони 45, дом 9, кв 12');
+
+        $entity = Entity::query()->firstOrFail();
+        self::assertSame('г хучанд, кучаи исмоили сомони 45, дом 9, кв 12', $entity->normalized_name);
+        self::assertSame(EntityType::Address, $entity->entity_type);
+
+        $mention = EntityMention::query()->firstOrFail();
+        self::assertSame($entity->id, $mention->entity_id);
+        self::assertSame($spoRaw->client_id, $mention->client_id);
+        self::assertSame($spoRaw->id, $mention->spo_raw_id);
+        self::assertSame(EntityMentionSource::Structured, $mention->source);
+    }
+
+    public function test_null_address_registers_nothing(): void
+    {
+        $spoRaw = $this->createSpoRaw();
+
+        $this->service->registerAddressMention($spoRaw->client_id, $spoRaw, null);
+
+        self::assertSame(0, Entity::query()->count());
+        self::assertSame(0, EntityMention::query()->count());
+    }
+
+    public function test_repeated_address_registration_does_not_duplicate(): void
+    {
+        $spoRaw = $this->createSpoRaw();
+        $address = 'г Хучанд, кучаи Исмоили Сомони 45, дом 9, кв 12';
+
+        $this->service->registerAddressMention($spoRaw->client_id, $spoRaw, $address);
+        $this->service->registerAddressMention($spoRaw->client_id, $spoRaw, $address);
+
+        self::assertSame(1, Entity::query()->count());
+        self::assertSame(1, EntityMention::query()->count());
+    }
+
     public function test_ner_mentions_matched_by_spo_date_are_registered_as_unknown(): void
     {
         $spoRaw = $this->createSpoRaw(transactionDate: '2026-02-10');

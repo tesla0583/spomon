@@ -67,6 +67,40 @@ final class EntityRepositoryTest extends TestCase
         self::assertSame([], $this->repository->findKnownNetworkEntityReferences($client->id));
     }
 
+    public function test_shared_address_entity_produces_address_worded_message(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('г хучанд, кучаи исмоили сомони 45, дом 9, кв 12', EntityType::Address);
+
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findKnownNetworkEntityReferences($clientA->id);
+
+        self::assertSame(
+            [sprintf('адрес "г хучанд, кучаи исмоили сомони 45, дом 9, кв 12" уже встречался в СПО клиента %d', $clientB->id)],
+            $forA,
+        );
+    }
+
+    public function test_shared_bank_entity_produces_bank_worded_message(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('бонки симург', EntityType::Bank);
+
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findKnownNetworkEntityReferences($clientA->id);
+
+        self::assertSame(
+            [sprintf('банк "бонки симург" уже встречался в СПО клиента %d', $clientB->id)],
+            $forA,
+        );
+    }
+
     private function createClient(string $docNumber, string $fullName): Client
     {
         return Client::create([
@@ -98,12 +132,12 @@ final class EntityRepositoryTest extends TestCase
         ]);
     }
 
-    private function createEntity(string $normalizedName): Entity
+    private function createEntity(string $normalizedName, EntityType $entityType = EntityType::Organization): Entity
     {
         return Entity::create([
             'normalized_name' => $normalizedName,
             'raw_name' => $normalizedName,
-            'entity_type' => EntityType::Organization,
+            'entity_type' => $entityType,
         ]);
     }
 

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<form_101 xsi:noNamespaceSchemaLocation="report_banks.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <report_name id="0">
+            <role>Подотчетная организация ОАО Банк Симург</role>
+            <account_fullname>Далер Каримов</account_fullname>
+            <email>d.karimov@example.test</email>
+            <fmcrn>10100001</fmcrn>
+        </report_name>
+        <transaction id="0">
+            <transaction_type>10.3</transaction_type>
+            <transaction_type_hidden>10.3</transaction_type_hidden>
+            <transaction_subtype>10.3.1</transaction_subtype>
+            <details>10.3.1</details>
+        </transaction>
+        <transaction_details id="0">
+            <trans_date>2026-06-30</trans_date>
+            <currency>USD</currency>
+            <amount>12300</amount>
+            <amount_nc>113989</amount_nc>
+            <transaction_desc>HS CIVIL USE PREPAYMENT FOR MEDICALGOODS ACCORDING TO CONTRACT NO. 1004NJ26 DD 20.04.2026 INVOICE NO.NJ-621-06-26 DATED 24.06.2026</transaction_desc>
+        </transaction_details>
+        <side_section id="0">
+            <side_type>1</side_type>
+            <side_subtype>3</side_subtype>
+            <name>ЧДММ "Некруз Трейд"</name>
+            <tax_pay_number>070052184</tax_pay_number>
+            <leg_org_form>1.1</leg_org_form>
+            <bank>ФИЛИАЛИ ЧСК "БОНКИ СИМУРГ" ДАР Н.ШОХМАНСУР</bank>
+            <bank_country>TJ</bank_country>
+            <bic>470103000</bic>
+            <bank_account>20206840400240758319</bank_account>
+            <country>TJ</country>
+            <region>Душанбе</region>
+            <city>Душанбе</city>
+            <address>Чамоати дехоти Навбахор, дехаи Гулистон, дом -</address>
+        </side_section>
+        <side_section id="1">
+            <side_type>4</side_type>
+            <side_subtype>3</side_subtype>
+            <name>ORION TRADE ENTERPRISES</name>
+            <bank>ATLAS COMMERCIAL BANK LIMITED</bank>
+            <bank_country>PK</bank_country>
+            <bic>ATCBPKKAXXX</bic>
+            <bank_account>PK62ATCB5553008100417362</bank_account>
+            <country>PK</country>
+            <region>LAHORE</region>
+            <city>LAHORE</city>
+            <address>LAHORE, PAKISTAN</address>
+        </side_section>
+        <suspicious_transaction_description id="0">
+            <is_suspicious>yes</is_suspicious>
+            <criterias_base>
+				<standard>1</standard></criterias_base>
+            <criterias>
+				<standard>21</standard></criterias>
+            <doubt_description>Тибки талаботи руйхати минтакахои дорои хавфи баланд, ирсол карда мешавад.</doubt_description>
+            <transaction_rejected>no</transaction_rejected>
+            <transaction_freezed>no</transaction_freezed>
+        </suspicious_transaction_description>
+</form_101>

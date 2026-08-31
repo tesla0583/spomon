@@ -1,0 +1,74 @@
+
+<form_101 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="report_banks.xsd">
+
+  <report_name id="0">
+    <role>Подотчетная организация ОАО Банк Симург</role>
+    <account_fullname>Наргис Раджабова</account_fullname>
+    <email>n.rajabova@example.test</email>
+    <fmcrn>10100001</fmcrn>
+  </report_name>
+
+  <transaction id="0">
+    <transaction_type>10.3</transaction_type>
+    <transaction_type_hidden>10.3</transaction_type_hidden>
+    <transaction_subtype>10.3.8</transaction_subtype>
+    <details>10.3.3</details>
+  </transaction>
+
+  <transaction_details id="0">
+    <trans_date>2026-08-04</trans_date>
+    <currency>USD</currency>
+    <amount>470</amount>
+    <amount_nc>4348</amount_nc>
+    <transaction_desc>Помощь близким (Western Union)</transaction_desc>
+  </transaction_details>
+
+  <side_section id="0">
+    <side_type>1</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>Каримова</first_name>
+    <last_name>Дилноза</last_name>
+    <middle_name>Файзуллоевна</middle_name>
+    <dob>1978-03-22</dob>
+    <citizenship>TJ</citizenship>
+    <doc_type>1</doc_type>
+    <doc_number>А09271643</doc_number>
+    <date_of_issue>2022-12-07</date_of_issue>
+    <bank>Филиали ЧСК "Бонки Симург" дар ш.Душанбе, н. Фирдавси</bank>
+    <bank_country>TJ</bank_country>
+    <bic>470103000</bic>
+    <country>TJ</country>
+    <region>нохияхои Душанбе</region>
+    <city>Район Фирдавси</city>
+    <address>нохияи Сино Бохтар д.9/2 кв\офф1</address>
+  </side_section>
+
+  <side_section id="1">
+    <side_type>4</side_type>
+    <side_subtype>1</side_subtype>
+    <first_name>NABIZODA</first_name>
+    <last_name>RASUL</last_name>
+    <middle_name>AMIN</middle_name>
+    <dob>1990-05-19</dob>
+    <doс_number>1403-0200-46718</doс_number>
+    <date_of_issue>2024-01-01</date_of_issue>
+    <bank_country>AF</bank_country>
+    <country>AF</country>
+    <city>KABUL</city>
+  </side_section>
+
+  <suspicious_transaction_description id="0">
+    <is_suspicious>yes</is_suspicious>
+    <criterias_base>
+      <standard>1</standard>
+    </criterias_base>
+    <criterias>
+      <standard>21</standard>
+    </criterias>
+    <doubt_description>Тибки талаботи руйхати кишвархои дорои хавфи баланд ирсол карда мешавад.</doubt_description>
+    <transaction_rejected>no</transaction_rejected>
+    <transaction_freezed>no</transaction_freezed>
+  </suspicious_transaction_description>
+
+</form_101>
+
