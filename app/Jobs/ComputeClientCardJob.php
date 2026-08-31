@@ -7,6 +7,8 @@ namespace App\Jobs;
 use App\DTOs\LlmClientAnalysisRequestDto;
 use App\Models\Client;
 use App\Models\ClientCard;
+use App\Repositories\EntityRepository;
+use App\Services\Entities\EntityRegistrationService;
 use App\Services\Llm\ClaudeApiClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,8 +44,11 @@ final class ComputeClientCardJob implements ShouldQueue
         return [10, 30, 60];
     }
 
-    public function handle(ClaudeApiClient $api): void
-    {
+    public function handle(
+        ClaudeApiClient $api,
+        EntityRepository $entityRepository,
+        EntityRegistrationService $entityRegistrationService,
+    ): void {
         $client = Client::findOrFail($this->clientId);
 
         $spoRaws = $client->spoRaws()->orderBy('transaction_date')->get();
@@ -70,7 +75,7 @@ final class ComputeClientCardJob implements ShouldQueue
         $result = $api->analyzeClient(new LlmClientAnalysisRequestDto(
             clientId: $client->id,
             spoHistory: $spoHistory,
-            knownNetworkEntities: [], // реестр сети подключается на Этапе 5, пока всегда пуст
+            knownNetworkEntities: $entityRepository->findKnownNetworkEntityReferences($client->id),
         ));
 
         ClientCard::updateOrCreate(
@@ -85,6 +90,8 @@ final class ComputeClientCardJob implements ShouldQueue
                 'computed_at' => now(),
             ],
         );
+
+        $entityRegistrationService->registerNerMentions($client, $result->extractedEntities);
     }
 
     /**

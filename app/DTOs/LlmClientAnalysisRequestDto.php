@@ -9,8 +9,9 @@ namespace App\DTOs;
  * история СПО одного клиента плюс реестр уже известных сетевых сущностей.
  *
  * См. CLAUDE.md, раздел "Логика вызова Claude API": единица вызова — один клиент, не пачка
- * клиентов и не один XML-файл. На этом этапе {@see self::$knownNetworkEntities} всегда пуст —
- * поиск пересечений сущностей появится на Этапе 5.
+ * клиентов и не один XML-файл. {@see self::$knownNetworkEntities} заполняется
+ * App\Repositories\EntityRepository::findKnownNetworkEntityReferences() — обычным SQL,
+ * не LLM (агент лишь помечает совпадение с уже известным реестром).
  */
 final class LlmClientAnalysisRequestDto
 {

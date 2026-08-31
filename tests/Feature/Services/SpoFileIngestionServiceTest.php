@@ -7,9 +7,12 @@ namespace Tests\Feature\Services;
 use App\Enums\IngestionStatus;
 use App\Models\Client;
 use App\Models\ClientCard;
+use App\Models\Entity;
+use App\Models\EntityMention;
 use App\Models\SpoFileIngestion;
 use App\Models\SpoRaw;
 use App\Repositories\ClientRepository;
+use App\Services\Entities\EntityRegistrationService;
 use App\Services\Ingestion\SpoFileIngestionService;
 use App\Services\Xml\Form101Parser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,7 +41,7 @@ final class SpoFileIngestionServiceTest extends TestCase
         File::makeDirectory($this->basePath.'/processed', 0755, true);
         File::makeDirectory($this->basePath.'/failed', 0755, true);
 
-        $this->service = new SpoFileIngestionService(new Form101Parser, new ClientRepository);
+        $this->service = new SpoFileIngestionService(new Form101Parser, new ClientRepository, new EntityRegistrationService);
     }
 
     protected function tearDown(): void
@@ -107,12 +110,30 @@ final class SpoFileIngestionServiceTest extends TestCase
         self::assertSame('spo_1.xml', $spoRaw->source_file);
         self::assertNotNull($spoRaw->other_side);
 
+        // Вторая сторона фикстуры — юрлицо "ООО Тестовая Компания" — регистрируется
+        // в реестре сущностей как часть успешного сохранения XML.
+        self::assertSame(1, Entity::query()->count());
+        self::assertSame(1, EntityMention::query()->count());
+
         self::assertFileDoesNotExist($this->incomingPath.'/spo_1.xml');
         self::assertFileExists($this->basePath.'/processed/spo_1.xml');
 
         $ingestion = SpoFileIngestion::query()->first();
         self::assertSame(IngestionStatus::Processed, $ingestion->status);
         self::assertNotNull($ingestion->processed_at);
+    }
+
+    public function test_single_side_file_does_not_create_entity(): void
+    {
+        $this->fakeSuccessfulClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_single_side.xml', 'spo_1.xml');
+
+        $summary = $this->service->ingestFromDirectory($this->incomingPath);
+
+        self::assertSame(1, $summary->processedCount);
+        self::assertSame(1, SpoRaw::query()->count());
+        self::assertSame(0, Entity::query()->count());
+        self::assertSame(0, EntityMention::query()->count());
     }
 
     public function test_reingesting_identical_file_content_is_skipped_and_does_not_duplicate_records(): void

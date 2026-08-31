@@ -16,6 +16,7 @@ use App\Models\Client;
 use App\Models\SpoFileIngestion;
 use App\Models\SpoRaw;
 use App\Repositories\ClientRepository;
+use App\Services\Entities\EntityRegistrationService;
 use App\Services\Xml\Form101Parser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\File;
@@ -50,6 +51,7 @@ final class SpoFileIngestionService
     public function __construct(
         private readonly Form101Parser $parser,
         private readonly ClientRepository $clientRepository,
+        private readonly EntityRegistrationService $entityRegistrationService,
     ) {}
 
     public function ingestFromDirectory(string $incomingPath): IngestionSummaryDto
@@ -163,7 +165,7 @@ final class SpoFileIngestionService
     {
         $client = $this->findOrCreateClient($record->client);
 
-        SpoRaw::create([
+        $spoRaw = SpoRaw::create([
             'client_id' => $client->id,
             'source_file' => $record->sourceFile,
             'transaction_date' => $record->transactionDate !== null ? Carbon::parse($record->transactionDate) : null,
@@ -177,6 +179,10 @@ final class SpoFileIngestionService
             'ground_text' => $record->groundText,
             'other_side' => $this->otherSideToArray($record->otherSide),
         ]);
+
+        // Регистрация контрагента из структурных полей — часть домена "успешное
+        // сохранение XML" (не LLM), см. докблок класса.
+        $this->entityRegistrationService->registerStructuredMention($spoRaw, $record->otherSide);
 
         return $client;
     }

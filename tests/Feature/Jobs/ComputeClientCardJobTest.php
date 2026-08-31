@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\Enums\EntityMentionSource;
+use App\Enums\EntityType;
 use App\Enums\PartyType;
 use App\Enums\RiskLabel;
 use App\Jobs\ComputeClientCardJob;
 use App\Models\Client;
 use App\Models\ClientCard;
+use App\Models\Entity;
+use App\Models\EntityMention;
 use App\Models\SpoRaw;
+use App\Repositories\EntityRepository;
+use App\Services\Entities\EntityRegistrationService;
 use App\Services\Llm\ClaudeApiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -34,7 +40,7 @@ final class ComputeClientCardJobTest extends TestCase
         $client = $this->createClientWithSpoRaw();
         $this->fakeSuccessfulClaudeResponse();
 
-        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class));
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
 
         Http::assertSentCount(1);
 
@@ -49,8 +55,8 @@ final class ComputeClientCardJobTest extends TestCase
         $client = $this->createClientWithSpoRaw();
         $this->fakeSuccessfulClaudeResponse();
 
-        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class));
-        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class));
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
 
         // История СПО клиента не менялась между прогонами — второй прогон не должен
         // дёргать API повторно, fingerprint совпадает.
@@ -63,7 +69,7 @@ final class ComputeClientCardJobTest extends TestCase
         $client = $this->createClientWithSpoRaw();
         $this->fakeSuccessfulClaudeResponse();
 
-        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class));
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
         $firstFingerprint = ClientCard::query()->where('client_id', $client->id)->firstOrFail()->history_fingerprint;
 
         SpoRaw::create([
@@ -81,7 +87,7 @@ final class ComputeClientCardJobTest extends TestCase
             'other_side' => null,
         ]);
 
-        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class));
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
 
         Http::assertSentCount(2);
 
@@ -89,11 +95,83 @@ final class ComputeClientCardJobTest extends TestCase
         self::assertNotSame($firstFingerprint, $card->history_fingerprint);
     }
 
-    private function createClientWithSpoRaw(): Client
+    public function test_extracted_entities_from_response_are_registered_as_ner_mentions(): void
+    {
+        $client = $this->createClientWithSpoRaw();
+
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'id' => 'msg_test',
+                'content' => [
+                    [
+                        'type' => 'tool_use',
+                        'name' => 'submit_client_analysis',
+                        'input' => [
+                            'summary' => 'Единичный случай подозрительного перевода.',
+                            'pattern_notes' => null,
+                            'extracted_entities' => [
+                                ['spo_date' => '2026-01-10', 'entities' => ['ООО «Ромашка»']],
+                            ],
+                            'network_signal' => ['found' => false, 'matched_client_reference' => null],
+                            'final_label' => 'единичный случай',
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
+
+        $mention = EntityMention::query()->where('source', EntityMentionSource::Ner)->firstOrFail();
+        self::assertSame($client->id, $mention->client_id);
+
+        $entity = Entity::query()->findOrFail($mention->entity_id);
+        self::assertSame('ромашка', $entity->normalized_name);
+        self::assertSame(EntityType::Unknown, $entity->entity_type);
+    }
+
+    public function test_known_network_entities_are_passed_to_claude_api_when_clients_share_an_entity(): void
+    {
+        $client = $this->createClientWithSpoRaw('T0000001');
+        $otherClient = $this->createClientWithSpoRaw('T0000002');
+
+        $entity = Entity::create([
+            'normalized_name' => 'компания',
+            'raw_name' => 'ООО «Компания»',
+            'entity_type' => EntityType::Organization,
+        ]);
+
+        EntityMention::create([
+            'entity_id' => $entity->id,
+            'client_id' => $client->id,
+            'spo_raw_id' => $client->spoRaws()->firstOrFail()->id,
+            'source' => EntityMentionSource::Structured,
+        ]);
+        EntityMention::create([
+            'entity_id' => $entity->id,
+            'client_id' => $otherClient->id,
+            'spo_raw_id' => $otherClient->spoRaws()->firstOrFail()->id,
+            'source' => EntityMentionSource::Structured,
+        ]);
+
+        $this->fakeSuccessfulClaudeResponse();
+
+        (new ComputeClientCardJob($client->id))->handle(app(ClaudeApiClient::class), app(EntityRepository::class), app(EntityRegistrationService::class));
+
+        Http::assertSent(function ($request) use ($otherClient) {
+            $content = json_decode($request['messages'][0]['content'], true);
+
+            return $content['known_network_entities'] === [
+                sprintf('контрагент "компания" уже встречался в СПО клиента %d', $otherClient->id),
+            ];
+        });
+    }
+
+    private function createClientWithSpoRaw(string $docNumber = 'T0000001'): Client
     {
         $client = Client::create([
             'party_type' => PartyType::Individual,
-            'doc_number' => 'T0000001',
+            'doc_number' => $docNumber,
             'first_name' => 'Гулнора',
             'last_name' => 'Файзуллоева',
             'middle_name' => null,
