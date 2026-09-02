@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Services;
 
 use App\Enums\IngestionStatus;
+use App\Enums\SpoFileIngestOutcome;
 use App\Models\Client;
 use App\Models\ClientCard;
 use App\Models\Entity;
@@ -331,6 +332,90 @@ final class SpoFileIngestionServiceTest extends TestCase
         self::assertSame(0, $summary->processedCount);
         self::assertSame(0, $summary->skippedCount);
         self::assertSame(0, $summary->failedCount);
+    }
+
+    public function test_ingest_file_processes_a_single_valid_file_and_moves_it_to_processed(): void
+    {
+        $this->fakeSuccessfulClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
+
+        $result = $this->service->ingestFile($this->incomingPath.'/spo_1.xml');
+
+        self::assertSame(SpoFileIngestOutcome::Processed, $result->outcome);
+        self::assertSame('spo_1.xml', $result->fileName);
+        self::assertNull($result->errorMessage);
+        self::assertNull($result->cardFailureMessage);
+
+        $client = Client::query()->first();
+        self::assertNotNull($client);
+        self::assertSame($client->id, $result->clientId);
+
+        self::assertSame(1, SpoRaw::query()->count());
+        self::assertFileDoesNotExist($this->incomingPath.'/spo_1.xml');
+        self::assertFileExists($this->basePath.'/processed/spo_1.xml');
+    }
+
+    public function test_ingest_file_skips_an_already_processed_file(): void
+    {
+        $this->fakeSuccessfulClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
+        $this->service->ingestFile($this->incomingPath.'/spo_1.xml');
+
+        // Тот же файл (то же имя+хеш) снова попадает в incoming.
+        $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
+
+        $result = $this->service->ingestFile($this->incomingPath.'/spo_1.xml');
+
+        self::assertSame(SpoFileIngestOutcome::Skipped, $result->outcome);
+        self::assertSame(1, SpoRaw::query()->count());
+    }
+
+    public function test_ingest_file_returns_failed_outcome_with_error_message_and_moves_to_failed(): void
+    {
+        $this->copyFixtureToIncoming('unsupported_root.xml', 'bad.xml');
+
+        $result = $this->service->ingestFile($this->incomingPath.'/bad.xml');
+
+        self::assertSame(SpoFileIngestOutcome::Failed, $result->outcome);
+        self::assertSame('bad.xml', $result->fileName);
+        self::assertNotEmpty($result->errorMessage);
+
+        self::assertSame(0, SpoRaw::query()->count());
+        self::assertFileDoesNotExist($this->incomingPath.'/bad.xml');
+        self::assertFileExists($this->basePath.'/failed/bad.xml');
+    }
+
+    public function test_ingest_file_reports_card_failure_without_failing_the_file(): void
+    {
+        $this->fakeFailingClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
+
+        $result = $this->service->ingestFile($this->incomingPath.'/spo_1.xml');
+
+        self::assertSame(SpoFileIngestOutcome::Processed, $result->outcome);
+        self::assertNotNull($result->clientId);
+        self::assertNotEmpty($result->cardFailureMessage);
+
+        self::assertSame(1, SpoRaw::query()->count());
+        self::assertFileExists($this->basePath.'/processed/spo_1.xml');
+    }
+
+    /**
+     * Регрессия на извлечение ingestFile(): ingestFromDirectory() должна по-прежнему давать
+     * тот же результат, что и раньше — теперь это просто тонкий цикл вокруг ingestFile().
+     */
+    public function test_ingest_from_directory_still_aggregates_ingest_file_results_correctly(): void
+    {
+        $this->fakeSuccessfulClaudeResponse();
+        $this->copyFixtureToIncoming('form_101_valid.xml', 'spo_1.xml');
+        $this->copyFixtureToIncoming('unsupported_root.xml', 'bad.xml');
+
+        $summary = $this->service->ingestFromDirectory($this->incomingPath);
+
+        self::assertSame(1, $summary->processedCount);
+        self::assertSame(0, $summary->skippedCount);
+        self::assertSame(1, $summary->failedCount);
+        self::assertArrayHasKey('bad.xml', $summary->failures);
     }
 
     private function copyFixtureToIncoming(string $fixtureName, string $targetName): void

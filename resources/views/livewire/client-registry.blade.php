@@ -1,6 +1,77 @@
 <div>
     <h1 class="text-2xl font-semibold mb-4">Реестр клиентов</h1>
 
+    <div class="mb-4">
+        @if ($queue !== [])
+            <div wire:poll.200ms="{{ $activeOperation === 'ingest' ? 'processNextIngestItem' : 'processNextRecomputeItem' }}">
+                <div class="w-full max-w-md bg-gray-200 rounded h-4 overflow-hidden">
+                    <div class="bg-blue-600 h-4 transition-all" style="width: {{ $total > 0 ? (int) ($done / $total * 100) : 0 }}%"></div>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Обработано {{ $done }} из {{ $total }}</p>
+            </div>
+        @else
+            <div class="flex flex-wrap gap-3">
+                <button
+                    type="button"
+                    wire:click="startIngest"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >Загрузить новые СПО из папки</button>
+
+                <button
+                    type="button"
+                    wire:click="startRecompute"
+                    wire:confirm="Пересчитать карточки всех клиентов через Claude API?"
+                    class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
+                >Пересчитать карточки клиентов</button>
+            </div>
+
+            @if ($lastSummary !== null)
+                <div class="mt-3 text-sm text-gray-700">
+                    @if ($activeOperation === 'ingest')
+                        Обработано: {{ $lastSummary['processedCount'] }}.
+                        Пропущено: {{ $lastSummary['skippedCount'] }}.
+                        Ошибок: {{ $lastSummary['failedCount'] }}.
+
+                        @if ($lastSummary['failures'] !== [])
+                            <div class="mt-2 text-red-700">
+                                Файлы, обработка которых завершилась ошибкой:
+                                <ul class="list-disc list-inside">
+                                    @foreach ($lastSummary['failures'] as $fileName => $errorMessage)
+                                        <li>{{ $fileName }}: {{ $errorMessage }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        @if ($lastSummary['cardFailures'] !== [])
+                            <div class="mt-2 text-amber-700">
+                                XML сохранён, но пересчёт карточки через Claude API не удался:
+                                <ul class="list-disc list-inside">
+                                    @foreach ($lastSummary['cardFailures'] as $clientId => $errorMessage)
+                                        <li>клиент #{{ $clientId }}: {{ $errorMessage }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    @elseif ($activeOperation === 'recompute')
+                        Запущен пересчёт для {{ $lastSummary['dispatchedCount'] }} клиент(ов).
+
+                        @if ($lastSummary['failures'] !== [])
+                            <div class="mt-2 text-red-700">
+                                Не удалось пересчитать:
+                                <ul class="list-disc list-inside">
+                                    @foreach ($lastSummary['failures'] as $clientId => $errorMessage)
+                                        <li>клиент #{{ $clientId }}: {{ $errorMessage }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+            @endif
+        @endif
+    </div>
+
     <input
         type="text"
         wire:model.live.debounce.400ms="search"

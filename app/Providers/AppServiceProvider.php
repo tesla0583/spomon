@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\LivewireUpdateUriFix;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,5 +32,13 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.url')) {
             URL::forceRootUrl(config('app.url'));
         }
+
+        // См. App\Support\LivewireUpdateUriFix — форс-рут выше не покрывает
+        // data-update-uri (Livewire строит его в режиме "относительного" URL, который
+        // вычитает базовый путь текущего запроса, а не берёт config('app.url')).
+        // Переопределяем @livewireScripts, чтобы поправить именно этот один атрибут.
+        Blade::directive('livewireScripts', function ($expression) {
+            return '{!! \\'.LivewireUpdateUriFix::class.'::scripts('.$expression.') !!}';
+        });
     }
 }

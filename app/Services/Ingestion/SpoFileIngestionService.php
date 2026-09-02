@@ -8,9 +8,11 @@ use App\DTOs\IndividualPartyDto;
 use App\DTOs\IngestionSummaryDto;
 use App\DTOs\LegalEntityPartyDto;
 use App\DTOs\PartyDataInterface;
+use App\DTOs\SpoFileIngestResultDto;
 use App\DTOs\SpoRecordDto;
 use App\Enums\IngestionStatus;
 use App\Enums\PartyType;
+use App\Enums\SpoFileIngestOutcome;
 use App\Jobs\ComputeClientCardJob;
 use App\Models\Client;
 use App\Models\SpoFileIngestion;
@@ -65,76 +67,20 @@ final class SpoFileIngestionService
         $cardFailures = [];
 
         foreach ($this->listXmlFiles($incomingPath) as $filePath) {
-            $fileName = basename($filePath);
-            $content = File::get($filePath);
-            $fileHash = hash('sha256', $content);
+            $result = $this->ingestFile($filePath);
 
-            $ingestion = SpoFileIngestion::query()
-                ->where('file_name', $fileName)
-                ->where('file_hash', $fileHash)
-                ->first();
+            match ($result->outcome) {
+                SpoFileIngestOutcome::Processed => $processedCount++,
+                SpoFileIngestOutcome::Skipped => $skippedCount++,
+                SpoFileIngestOutcome::Failed => $failedCount++,
+            };
 
-            if ($ingestion?->status === IngestionStatus::Processed) {
-                // Та же пара (имя файла, хеш содержимого) уже успешно обработана ранее —
-                // пропускаем, файл остаётся в incoming нетронутым (перемещение описано
-                // только для случаев успеха/ошибки обработки, см. CLAUDE.md).
-                $skippedCount++;
-
-                continue;
+            if ($result->outcome === SpoFileIngestOutcome::Failed) {
+                $failures[$result->fileName] = $result->errorMessage;
             }
 
-            if ($ingestion === null) {
-                // Записи с такой парой (имя, хеш) нет: либо файл совсем новый, либо это
-                // то же содержимое под другим именем — составной unique-индекс
-                // (file_name, file_hash) на этот случай (см. миграцию
-                // replace_spo_file_ingestions_file_hash_unique_with_composite) считает
-                // это самостоятельным файлом, а не дублем.
-                $ingestion = SpoFileIngestion::create([
-                    'file_name' => $fileName,
-                    'file_hash' => $fileHash,
-                    'status' => IngestionStatus::Pending,
-                ]);
-            } else {
-                // Эта же пара (имя, хеш) ранее уже была обработана с ошибкой (failed) —
-                // сбрасываем в pending и переобрабатываем (retry).
-                $ingestion->fill([
-                    'status' => IngestionStatus::Pending,
-                    'error_message' => null,
-                ])->save();
-            }
-
-            try {
-                $record = $this->parser->parse($content)->withSourceFile($fileName);
-                $client = $this->persist($record);
-
-                $ingestion->fill([
-                    'status' => IngestionStatus::Processed,
-                    'processed_at' => now(),
-                    'error_message' => null,
-                ])->save();
-
-                $this->moveFile($filePath, $incomingPath, 'processed', $fileName);
-                $processedCount++;
-            } catch (Throwable $e) {
-                $ingestion->fill([
-                    'status' => IngestionStatus::Failed,
-                    'error_message' => $e->getMessage(),
-                ])->save();
-
-                $this->moveFile($filePath, $incomingPath, 'failed', $fileName);
-                $failures[$fileName] = $e->getMessage();
-                $failedCount++;
-
-                continue;
-            }
-
-            // Отдельный try — см. докблок класса: сбой здесь не должен откатывать статус
-            // файла на Failed и не должен вызывать повторный парсинг XML при retry.
-            try {
-                ComputeClientCardJob::dispatch($client->id);
-            } catch (Throwable $e) {
-                report($e);
-                $cardFailures[$client->id] = $e->getMessage();
+            if ($result->cardFailureMessage !== null) {
+                $cardFailures[$result->clientId] = $result->cardFailureMessage;
             }
         }
 
@@ -144,6 +90,102 @@ final class SpoFileIngestionService
             failedCount: $failedCount,
             failures: $failures,
             cardFailures: $cardFailures,
+        );
+    }
+
+    /**
+     * Обрабатывает один XML-файл СПО: парсинг, матчинг клиента, сохранение SpoRaw, dispatch
+     * пересчёта карточки, перенос файла в processed/failed. Используется как построчным
+     * обходом директории в {@see self::ingestFromDirectory()}, так и напрямую — по одному
+     * файлу за вызов — из Livewire-прогресс-бара реестра клиентов (App\Livewire\ClientRegistry).
+     *
+     * $incomingPath вычисляется из директории $filePath — то же значение, которое
+     * ingestFromDirectory() передаёт сюда неявно через сам путь к файлу.
+     */
+    public function ingestFile(string $filePath): SpoFileIngestResultDto
+    {
+        $incomingPath = rtrim(dirname($filePath), '/\\');
+        $fileName = basename($filePath);
+        $content = File::get($filePath);
+        $fileHash = hash('sha256', $content);
+
+        $ingestion = SpoFileIngestion::query()
+            ->where('file_name', $fileName)
+            ->where('file_hash', $fileHash)
+            ->first();
+
+        if ($ingestion?->status === IngestionStatus::Processed) {
+            // Та же пара (имя файла, хеш содержимого) уже успешно обработана ранее —
+            // пропускаем, файл остаётся в incoming нетронутым (перемещение описано
+            // только для случаев успеха/ошибки обработки, см. CLAUDE.md).
+            return new SpoFileIngestResultDto(
+                fileName: $fileName,
+                outcome: SpoFileIngestOutcome::Skipped,
+            );
+        }
+
+        if ($ingestion === null) {
+            // Записи с такой парой (имя, хеш) нет: либо файл совсем новый, либо это
+            // то же содержимое под другим именем — составной unique-индекс
+            // (file_name, file_hash) на этот случай (см. миграцию
+            // replace_spo_file_ingestions_file_hash_unique_with_composite) считает
+            // это самостоятельным файлом, а не дублем.
+            $ingestion = SpoFileIngestion::create([
+                'file_name' => $fileName,
+                'file_hash' => $fileHash,
+                'status' => IngestionStatus::Pending,
+            ]);
+        } else {
+            // Эта же пара (имя, хеш) ранее уже была обработана с ошибкой (failed) —
+            // сбрасываем в pending и переобрабатываем (retry).
+            $ingestion->fill([
+                'status' => IngestionStatus::Pending,
+                'error_message' => null,
+            ])->save();
+        }
+
+        try {
+            $record = $this->parser->parse($content)->withSourceFile($fileName);
+            $client = $this->persist($record);
+
+            $ingestion->fill([
+                'status' => IngestionStatus::Processed,
+                'processed_at' => now(),
+                'error_message' => null,
+            ])->save();
+
+            $this->moveFile($filePath, $incomingPath, 'processed', $fileName);
+        } catch (Throwable $e) {
+            $ingestion->fill([
+                'status' => IngestionStatus::Failed,
+                'error_message' => $e->getMessage(),
+            ])->save();
+
+            $this->moveFile($filePath, $incomingPath, 'failed', $fileName);
+
+            return new SpoFileIngestResultDto(
+                fileName: $fileName,
+                outcome: SpoFileIngestOutcome::Failed,
+                errorMessage: $e->getMessage(),
+            );
+        }
+
+        // Отдельный try — см. докблок класса: сбой здесь не должен откатывать статус
+        // файла на Failed и не должен вызывать повторный парсинг XML при retry.
+        $cardFailureMessage = null;
+
+        try {
+            ComputeClientCardJob::dispatch($client->id);
+        } catch (Throwable $e) {
+            report($e);
+            $cardFailureMessage = $e->getMessage();
+        }
+
+        return new SpoFileIngestResultDto(
+            fileName: $fileName,
+            outcome: SpoFileIngestOutcome::Processed,
+            clientId: $client->id,
+            cardFailureMessage: $cardFailureMessage,
         );
     }
 
