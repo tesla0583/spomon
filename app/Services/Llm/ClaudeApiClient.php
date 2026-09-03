@@ -6,7 +6,6 @@ namespace App\Services\Llm;
 
 use App\DTOs\LlmClientAnalysisRequestDto;
 use App\DTOs\LlmClientAnalysisResponseDto;
-use App\Enums\RiskLabel;
 use App\Exceptions\ClaudeApiException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -28,21 +27,6 @@ final class ClaudeApiClient
     private const ANTHROPIC_VERSION = '2023-06-01';
 
     private const TOOL_NAME = 'submit_client_analysis';
-
-    /**
-     * Соответствие русских меток из ответа модели значениям {@see RiskLabel}.
-     * Значения enum — стабильные snake_case-коды для БД/API, значения из ответа модели —
-     * человекочитаемый русский текст из tool-схемы, поэтому прямое RiskLabel::from() не
-     * подходит и сопоставление сделано явным списком.
-     *
-     * @var array<string, RiskLabel>
-     */
-    private const FINAL_LABEL_MAP = [
-        'единичный случай' => RiskLabel::SingleCase,
-        'требует внимания' => RiskLabel::NeedsAttention,
-        'явный повторяющийся паттерн' => RiskLabel::RepeatingPattern,
-        'часть более широкой сети' => RiskLabel::PartOfNetwork,
-    ];
 
     public function analyzeClient(LlmClientAnalysisRequestDto $request): LlmClientAnalysisResponseDto
     {
@@ -113,12 +97,8 @@ final class ClaudeApiClient
                         ],
                         'required' => ['found', 'matched_client_reference'],
                     ],
-                    'final_label' => [
-                        'type' => 'string',
-                        'enum' => array_keys(self::FINAL_LABEL_MAP),
-                    ],
                 ],
-                'required' => ['summary', 'pattern_notes', 'extracted_entities', 'network_signal', 'final_label'],
+                'required' => ['summary', 'pattern_notes', 'extracted_entities', 'network_signal'],
             ],
         ];
     }
@@ -155,22 +135,12 @@ final class ClaudeApiClient
 
         $input = $this->recoverFieldsLeakedIntoSummary($input);
 
-        $finalLabelText = $input['final_label'] ?? null;
-        $finalLabel = self::FINAL_LABEL_MAP[$finalLabelText] ?? null;
-
-        if ($finalLabel === null) {
-            throw ClaudeApiException::unexpectedResponseFormat(
-                "неизвестное значение final_label: '".(string) $finalLabelText."'.",
-            );
-        }
-
         return new LlmClientAnalysisResponseDto(
             summary: (string) ($input['summary'] ?? ''),
             patternNotes: $input['pattern_notes'] ?? null,
             extractedEntities: $input['extracted_entities'] ?? [],
             networkSignalFound: (bool) ($input['network_signal']['found'] ?? false),
             networkSignalClientReference: $input['network_signal']['matched_client_reference'] ?? null,
-            finalLabel: $finalLabel,
             rawResponse: $rawResponse,
         );
     }

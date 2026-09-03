@@ -7,14 +7,14 @@ namespace Tests\Feature\Services\Entities;
 use App\Enums\EntityMentionSource;
 use App\Enums\EntityType;
 use App\Enums\PartyType;
-use App\Enums\RiskLabel;
+use App\Enums\RiskLevel;
 use App\Models\Client;
-use App\Models\ClientCard;
 use App\Models\Entity;
 use App\Models\EntityMention;
 use App\Models\SpoRaw;
 use App\Repositories\EntityRepository;
 use App\Services\Entities\ClientNetworkGraphService;
+use App\Services\Risk\ClientRiskLevelService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,30 +28,28 @@ final class ClientNetworkGraphServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new ClientNetworkGraphService(new EntityRepository);
+        $entityRepository = new EntityRepository;
+        $this->service = new ClientNetworkGraphService($entityRepository, new ClientRiskLevelService($entityRepository));
     }
 
     public function test_builds_focus_node_plus_related_clients_and_edges(): void
     {
         $focus = $this->createClient('T0000001', 'Клиент Фокус');
-        $withCard = $this->createClient('T0000002', 'Клиент С Карточкой');
-        $withoutCard = $this->createClient('T0000003', 'Клиент Без Карточки');
-
-        ClientCard::create([
-            'client_id' => $withCard->id,
-            'risk_label' => RiskLabel::PartOfNetwork,
-            'summary' => 'Сводка.',
-            'pattern_notes' => null,
-            'network_signal' => null,
-            'llm_raw_response' => ['ok' => true],
-            'history_fingerprint' => hash('sha256', (string) $withCard->id),
-            'computed_at' => now(),
-        ]);
+        $mediumRiskOther = $this->createClient('T0000002', 'Клиент Средний');
+        $highRiskOther = $this->createClient('T0000003', 'Клиент Высокий');
 
         $entity = $this->createEntity('компания');
         $this->mention($entity, $focus, $this->createSpoRaw($focus));
-        $this->mention($entity, $withCard, $this->createSpoRaw($withCard));
-        $this->mention($entity, $withoutCard, $this->createSpoRaw($withoutCard));
+        $this->mention($entity, $mediumRiskOther, $this->createSpoRaw($mediumRiskOther));
+
+        // 4+ СПО — RiskLevel::High независимо от связей (правило 1 приоритетнее правила 2).
+        foreach (range(1, 4) as $i) {
+            $spoRaw = $this->createSpoRaw($highRiskOther, sprintf('2026-0%d-01', $i));
+
+            if ($i === 1) {
+                $this->mention($entity, $highRiskOther, $spoRaw);
+            }
+        }
 
         $graph = $this->service->buildGraph($focus);
 
@@ -62,20 +60,25 @@ final class ClientNetworkGraphServiceTest extends TestCase
             $byId[$node->clientId] = $node;
         }
 
+        // Фокус: 1 СПО, 2 связи — distinctOtherClients !== 0, значит не Low; Medium.
         self::assertTrue($byId[$focus->id]->isFocus);
-        self::assertNull($byId[$focus->id]->riskLabel);
+        self::assertSame(RiskLevel::Medium->value, $byId[$focus->id]->riskLevel);
 
-        self::assertFalse($byId[$withCard->id]->isFocus);
-        self::assertSame(RiskLabel::PartOfNetwork->value, $byId[$withCard->id]->riskLabel);
+        // 1 СПО и как минимум 1 связь (на деле 2 — общая сущность роднит его и с
+        // фокусом, и с highRiskOther) — тоже Medium, не Low (правило Low требует
+        // ровно 0 связей).
+        self::assertFalse($byId[$mediumRiskOther->id]->isFocus);
+        self::assertSame(RiskLevel::Medium->value, $byId[$mediumRiskOther->id]->riskLevel);
 
-        self::assertFalse($byId[$withoutCard->id]->isFocus);
-        self::assertNull($byId[$withoutCard->id]->riskLabel);
+        self::assertFalse($byId[$highRiskOther->id]->isFocus);
+        self::assertSame(RiskLevel::High->value, $byId[$highRiskOther->id]->riskLevel);
 
         self::assertCount(2, $graph->edges);
         foreach ($graph->edges as $edge) {
             self::assertSame($focus->id, $edge->fromClientId);
             self::assertSame(EntityType::Organization->value, $edge->entityType);
             self::assertSame('компания', $edge->entityLabel);
+            self::assertSame('общий контрагент', $edge->connectionLabel);
         }
     }
 
@@ -87,6 +90,9 @@ final class ClientNetworkGraphServiceTest extends TestCase
 
         self::assertCount(1, $graph->nodes);
         self::assertTrue($graph->nodes[0]->isFocus);
+        // 0 СПО (не 1) — правило Low не срабатывает буквально по условию spoCount === 1,
+        // падает в Medium по умолчанию.
+        self::assertSame(RiskLevel::Medium->value, $graph->nodes[0]->riskLevel);
         self::assertSame([], $graph->edges);
     }
 
@@ -103,12 +109,12 @@ final class ClientNetworkGraphServiceTest extends TestCase
         ]);
     }
 
-    private function createSpoRaw(Client $client): SpoRaw
+    private function createSpoRaw(Client $client, string $transactionDate = '2026-02-10'): SpoRaw
     {
         return SpoRaw::create([
             'client_id' => $client->id,
             'source_file' => 'spo_1.xml',
-            'transaction_date' => '2026-02-10',
+            'transaction_date' => $transactionDate,
             'currency' => 'TJS',
             'amount' => 1000,
             'amount_nc' => null,

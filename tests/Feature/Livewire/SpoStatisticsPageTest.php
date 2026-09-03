@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Livewire;
 
 use App\Enums\PartyType;
-use App\Enums\RiskLabel;
 use App\Livewire\SpoStatisticsPage;
 use App\Models\Client;
 use App\Models\ClientCard;
@@ -32,7 +31,6 @@ final class SpoStatisticsPageTest extends TestCase
 
         ClientCard::create([
             'client_id' => $client->id,
-            'risk_label' => RiskLabel::SingleCase,
             'summary' => 'Сводка по клиенту.',
             'pattern_notes' => null,
             'network_signal' => null,

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
-use App\Enums\EntityType;
 use App\Enums\PartyType;
 use App\Models\Client;
 use App\Repositories\EntityRepository;
+use App\Services\Risk\ClientRiskLevelService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
@@ -33,6 +33,7 @@ final class ClientCardPage extends Component
             'card' => $this->client->card,
             'spoHistory' => $spoHistory,
             'networkReferences' => $this->networkReferences(),
+            'riskLevel' => app(ClientRiskLevelService::class)->calculate($this->client),
         ]);
     }
 
@@ -55,7 +56,7 @@ final class ClientCardPage extends Component
 
         return array_map(static fn (array $edge): string => sprintf(
             '%s "%s" уже встречался в СПО клиента %s',
-            EntityType::from($edge['entity_type'])->displayLabel(),
+            $edge['connection_label'],
             $edge['entity_label'],
             $otherClientNames[$edge['other_client_id']] ?? sprintf('#%d', $edge['other_client_id']),
         ), $edges);

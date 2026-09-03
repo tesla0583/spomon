@@ -98,7 +98,7 @@
                         </td>
                         <td class="px-4 py-2">{{ $client->party_type === \App\Enums\PartyType::Individual ? 'Физлицо' : 'Юрлицо' }}</td>
                         <td class="px-4 py-2">{{ $client->doc_number ?: $client->tax_pay_number ?: '—' }}</td>
-                        <td class="px-4 py-2"><x-risk-badge :label="$client->card?->risk_label" /></td>
+                        <td class="px-4 py-2"><x-risk-badge :label="$this->riskLevel($client)" /></td>
                         <td class="px-4 py-2">{{ $client->spo_raws_count }}</td>
                     </tr>
                 @empty

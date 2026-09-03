@@ -75,7 +75,6 @@ final class SpoFileIngestionServiceTest extends TestCase
                             'pattern_notes' => null,
                             'extracted_entities' => [],
                             'network_signal' => ['found' => false, 'matched_client_reference' => null],
-                            'final_label' => 'единичный случай',
                         ],
                     ],
                 ],

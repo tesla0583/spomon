@@ -15,22 +15,12 @@
 @once
     <script>
         document.addEventListener('alpine:init', () => {
-            const RISK_ORDER = ['none', 'single_case', 'needs_attention', 'repeating_pattern', 'part_of_network'];
+            const RISK_ORDER = ['low', 'medium', 'high'];
 
             const RISK_META = {
-                none: { name: 'нет карточки', color: '#9CA3AF' },
-                single_case: { name: 'единичный случай', color: '#22C55E' },
-                needs_attention: { name: 'требует внимания', color: '#EAB308' },
-                repeating_pattern: { name: 'явный повторяющийся паттерн', color: '#F97316' },
-                part_of_network: { name: 'часть более широкой сети', color: '#EF4444' },
-            };
-
-            const ENTITY_TYPE_LABELS = {
-                organization: 'контрагент-юрлицо',
-                bank: 'банк',
-                person: 'физлицо',
-                address: 'адрес',
-                unknown: 'связь',
+                low: { name: 'Низкий', color: '#22C55E' },
+                medium: { name: 'Средний', color: '#EAB308' },
+                high: { name: 'Высокий', color: '#EF4444' },
             };
 
             Alpine.data('networkGraph', (graph) => ({
@@ -50,12 +40,12 @@
                         itemStyle: { color: RISK_META[key].color },
                     }));
 
-                    const categoryIndex = (riskLabel) => RISK_ORDER.indexOf(riskLabel ?? 'none');
+                    const categoryIndex = (riskLevel) => RISK_ORDER.indexOf(riskLevel ?? 'low');
 
                     const nodes = graph.nodes.map((node) => ({
                         id: String(node.clientId),
                         name: node.label,
-                        category: categoryIndex(node.riskLabel),
+                        category: categoryIndex(node.riskLevel),
                         symbolSize: node.isFocus ? 60 : 36,
                         itemStyle: node.isFocus ? { borderColor: '#1D4ED8', borderWidth: 3 } : undefined,
                         label: { show: true },
@@ -75,6 +65,7 @@
                             target: String(edge.toClientId),
                             entityType: edge.entityType,
                             entityLabel: edge.entityLabel,
+                            connectionLabel: edge.connectionLabel,
                             lineStyle: { curveness: 0.1 + pairIndex * 0.15 },
                         };
                     });
@@ -83,9 +74,7 @@
                         tooltip: {
                             formatter: (params) => {
                                 if (params.dataType === 'edge') {
-                                    const typeLabel = ENTITY_TYPE_LABELS[params.data.entityType] ?? 'связь';
-
-                                    return typeLabel + ': ' + params.data.entityLabel;
+                                    return params.data.connectionLabel + ': ' + params.data.entityLabel;
                                 }
 
                                 return params.data.name;
@@ -100,10 +89,10 @@
                             categories,
                             data: nodes,
                             edges,
-                            force: { repulsion: 220, edgeLength: 120 },
+                            force: { repulsion: 650, edgeLength: [160, 260], gravity: 0.08 },
                             edgeLabel: {
                                 show: true,
-                                formatter: (params) => ENTITY_TYPE_LABELS[params.data.entityType] ?? 'связь',
+                                formatter: (params) => params.data.connectionLabel,
                             },
                             lineStyle: { color: '#9CA3AF' },
                             label: { position: 'right' },

@@ -17,11 +17,11 @@
         <div class="text-4xl font-semibold">{{ $summary->totalCount }}</div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        @foreach (\App\Enums\RiskLabel::cases() as $case)
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        @foreach (\App\Enums\RiskLevel::cases() as $case)
             <div class="bg-white rounded border border-gray-200 p-4">
                 <x-risk-badge :label="$case" />
-                <div class="text-2xl font-semibold mt-2">{{ $summary->countsByRiskLabel[$case->value] }}</div>
+                <div class="text-2xl font-semibold mt-2">{{ $summary->countsByRiskLevel[$case->value] }}</div>
             </div>
         @endforeach
     </div>

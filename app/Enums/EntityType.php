@@ -18,9 +18,12 @@ enum EntityType: string
     case Unknown = 'unknown';
 
     /**
-     * Русское отображаемое название типа сущности для UI/текстовых сообщений о связях
-     * — см. {@see \App\Repositories\EntityRepository::findKnownNetworkEntityReferences()}
-     * и {@see \App\Livewire\ClientCardPage::networkReferences()}.
+     * Русское отображаемое название типа сущности для текстовых сообщений о связях,
+     * уходящих в промпт Claude API — см.
+     * {@see \App\Repositories\EntityRepository::findKnownNetworkEntityReferences()}.
+     * Для отображения связи на карточке клиента и в графе используется другая,
+     * более содержательная подпись — см.
+     * {@see \App\Repositories\EntityRepository::findNetworkGraphEdges()}.
      */
     public function displayLabel(): string
     {

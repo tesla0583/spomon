@@ -20,35 +20,36 @@ final class ClientRegistryTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * startIngest() жёстко берёт storage_path('app/spo/incoming') (как и SpoIngestCommand
-     * сейчас) — на время теста реальная папка spo/ отодвигается в сторону и восстанавливается
-     * в tearDown(), чтобы тест не тронул настоящие входящие/обработанные файлы на диске.
+     * startIngest() (и SpoIngestCommand) читают путь из config('spo.incoming_path')
+     * (см. config/spo.php) — на время теста подменяем его на изолированную временную
+     * директорию, чтобы тест никогда не трогал реальную storage/app/spo разработчика.
+     *
+     * Раньше тест вместо этого физически отодвигал в сторону настоящую папку
+     * storage/app/spo и восстанавливал её в tearDown() — рабочий сценарий, но хрупкий:
+     * при прерывании прогона теста (падение процесса, Ctrl+C, таймаут) между setUp()
+     * и tearDown() настоящие файлы оставались в потерянном бэкапе безвозвратно
+     * (что на практике и произошло). Подмена конфига этот риск убирает полностью —
+     * реальный путь вообще не затрагивается.
      */
-    private string $realSpoPath;
+    private string $basePath;
 
-    private string $backupSpoPath;
+    private string $incomingPath;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->realSpoPath = storage_path('app/spo');
-        $this->backupSpoPath = storage_path('app/spo_test_backup_'.uniqid());
+        $this->basePath = storage_path('framework/testing/spo_registry_'.uniqid());
+        $this->incomingPath = $this->basePath.'/incoming';
 
-        if (File::isDirectory($this->realSpoPath)) {
-            File::moveDirectory($this->realSpoPath, $this->backupSpoPath);
-        }
+        File::makeDirectory($this->incomingPath, 0755, true);
 
-        File::makeDirectory($this->realSpoPath.'/incoming', 0755, true);
+        config(['spo.incoming_path' => $this->incomingPath]);
     }
 
     protected function tearDown(): void
     {
-        File::deleteDirectory($this->realSpoPath);
-
-        if (File::isDirectory($this->backupSpoPath)) {
-            File::moveDirectory($this->backupSpoPath, $this->realSpoPath);
-        }
+        File::deleteDirectory($this->basePath);
 
         parent::tearDown();
     }
@@ -80,6 +81,14 @@ final class ClientRegistryTest extends TestCase
             ->assertSeeHtml('href="'.route('clients.show', $client).'"');
     }
 
+    public function test_registry_shows_deterministic_risk_level_badge(): void
+    {
+        // 1 СПО, 0 связей — RiskLevel::Low.
+        $this->createClientWithSpoRaw('T0000001', 'Клиент Один');
+
+        Livewire::test(ClientRegistry::class)->assertSee('Низкий');
+    }
+
     /**
      * startIngest() + processNextIngestItem() вызванный total раз подряд (эмуляция того, что
      * в браузере сделает wire:poll) должны дать тот же итог, что и старый
@@ -88,8 +97,8 @@ final class ClientRegistryTest extends TestCase
     public function test_start_ingest_then_polling_all_items_matches_ingest_from_directory_result(): void
     {
         $this->fakeSuccessfulClaudeResponse();
-        File::copy(base_path('tests/Fixtures/xml/form_101_valid.xml'), storage_path('app/spo/incoming/spo_1.xml'));
-        File::copy(base_path('tests/Fixtures/xml/unsupported_root.xml'), storage_path('app/spo/incoming/bad.xml'));
+        File::copy(base_path('tests/Fixtures/xml/form_101_valid.xml'), $this->incomingPath.'/spo_1.xml');
+        File::copy(base_path('tests/Fixtures/xml/unsupported_root.xml'), $this->incomingPath.'/bad.xml');
 
         $component = Livewire::test(ClientRegistry::class)->call('startIngest');
 
@@ -210,7 +219,6 @@ final class ClientRegistryTest extends TestCase
                             'pattern_notes' => null,
                             'extracted_entities' => [],
                             'network_signal' => ['found' => false, 'matched_client_reference' => null],
-                            'final_label' => 'единичный случай',
                         ],
                     ],
                 ],

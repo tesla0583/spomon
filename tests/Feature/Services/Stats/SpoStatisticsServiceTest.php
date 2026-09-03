@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Services\Stats;
 
 use App\Enums\PartyType;
-use App\Enums\RiskLabel;
+use App\Enums\RiskLevel;
 use App\Models\Client;
-use App\Models\ClientCard;
 use App\Models\SpoRaw;
+use App\Repositories\EntityRepository;
+use App\Services\Risk\ClientRiskLevelService;
 use App\Services\Stats\SpoStatisticsService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,51 +25,52 @@ final class SpoStatisticsServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new SpoStatisticsService;
+        $this->service = new SpoStatisticsService(new ClientRiskLevelService(new EntityRepository));
     }
 
-    public function test_summarizes_counts_by_risk_label_within_period(): void
+    public function test_summarizes_spo_counts_by_risk_level_within_period(): void
     {
-        $single = $this->createClient('T0000001', 'Клиент Один');
-        $this->createCard($single, RiskLabel::SingleCase);
-        $this->createSpoRaw($single, '2026-02-10');
+        // 1 СПО, 0 связей — RiskLevel::Low.
+        $low = $this->createClient('T0000001', 'Клиент Низкий');
+        $this->createSpoRaw($low, '2026-02-10');
 
-        $network = $this->createClient('T0000002', 'Клиент Два');
-        $this->createCard($network, RiskLabel::PartOfNetwork);
-        $this->createSpoRaw($network, '2026-02-15');
+        // 4 СПО — RiskLevel::High.
+        $high = $this->createClient('T0000002', 'Клиент Высокий');
+        foreach (['2026-02-01', '2026-02-05', '2026-02-10', '2026-02-15'] as $date) {
+            $this->createSpoRaw($high, $date);
+        }
 
         $summary = $this->service->summarize(Carbon::parse('2026-02-01'), Carbon::parse('2026-02-28'));
 
-        self::assertSame(2, $summary->totalCount);
-        self::assertSame(1, $summary->countsByRiskLabel[RiskLabel::SingleCase->value]);
-        self::assertSame(1, $summary->countsByRiskLabel[RiskLabel::PartOfNetwork->value]);
-        self::assertSame(0, $summary->countsByRiskLabel[RiskLabel::NeedsAttention->value]);
-        self::assertSame(0, $summary->countsByRiskLabel[RiskLabel::RepeatingPattern->value]);
+        self::assertSame(5, $summary->totalCount);
+        self::assertSame(1, $summary->countsByRiskLevel[RiskLevel::Low->value]);
+        self::assertSame(0, $summary->countsByRiskLevel[RiskLevel::Medium->value]);
+        self::assertSame(4, $summary->countsByRiskLevel[RiskLevel::High->value]);
     }
 
     public function test_excludes_spo_outside_period(): void
     {
         $client = $this->createClient('T0000001', 'Клиент Один');
-        $this->createCard($client, RiskLabel::SingleCase);
         $this->createSpoRaw($client, '2026-01-15');
 
         $summary = $this->service->summarize(Carbon::parse('2026-02-01'), Carbon::parse('2026-02-28'));
 
         self::assertSame(0, $summary->totalCount);
-        self::assertSame(0, $summary->countsByRiskLabel[RiskLabel::SingleCase->value]);
+        self::assertSame(0, $summary->countsByRiskLevel[RiskLevel::Low->value]);
     }
 
-    public function test_spo_without_card_counts_towards_total_but_not_any_label(): void
+    public function test_every_spo_is_counted_in_exactly_one_risk_level_even_without_a_client_card(): void
     {
+        // RiskLevel не хранится в ClientCard и не зависит от неё — в отличие от старой
+        // LLM-метки, СПО клиента без карточки теперь тоже попадает в какой-то уровень
+        // (раньше был возможен разрыв: total учитывал такой СПО, а по меткам — нет).
         $client = $this->createClient('T0000001', 'Клиент Один');
         $this->createSpoRaw($client, '2026-02-10');
 
         $summary = $this->service->summarize(Carbon::parse('2026-02-01'), Carbon::parse('2026-02-28'));
 
         self::assertSame(1, $summary->totalCount);
-        foreach (RiskLabel::cases() as $case) {
-            self::assertSame(0, $summary->countsByRiskLabel[$case->value]);
-        }
+        self::assertSame($summary->totalCount, array_sum($summary->countsByRiskLevel));
     }
 
     private function createClient(string $docNumber, string $fullName): Client
@@ -81,20 +83,6 @@ final class SpoStatisticsServiceTest extends TestCase
             'middle_name' => null,
             'dob' => '1990-05-10',
             'full_name' => $fullName,
-        ]);
-    }
-
-    private function createCard(Client $client, RiskLabel $riskLabel): ClientCard
-    {
-        return ClientCard::create([
-            'client_id' => $client->id,
-            'risk_label' => $riskLabel,
-            'summary' => 'Сводка.',
-            'pattern_notes' => null,
-            'network_signal' => null,
-            'llm_raw_response' => ['ok' => true],
-            'history_fingerprint' => hash('sha256', (string) $client->id),
-            'computed_at' => now(),
         ]);
     }
 

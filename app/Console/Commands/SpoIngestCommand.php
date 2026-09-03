@@ -26,7 +26,7 @@ class SpoIngestCommand extends Command
 
     public function handle(SpoFileIngestionService $service): int
     {
-        $summary = $service->ingestFromDirectory(storage_path('app/spo/incoming'));
+        $summary = $service->ingestFromDirectory(config('spo.incoming_path'));
 
         $this->info(sprintf(
             'Обработано: %d. Пропущено (уже обработаны ранее): %d. Ошибок: %d.',

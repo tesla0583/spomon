@@ -36,6 +36,23 @@ use App\Support\EntityNormalizer;
  */
 final class EntityRegistrationService
 {
+    /**
+     * Фрагменты нормализованного имени сущности, при наличии которых сущность вообще
+     * не регистрируется как контрагент графа связей — служебные реквизиты,
+     * встречающиеся почти в каждом СПО и не несущие AML-сигнала (иначе ложно связывают
+     * почти всех клиентов друг с другом). Проверка по вхождению подстроки, а не по
+     * точному совпадению: LLM извлекает email регулятора из свободного текста вместе
+     * с окружающим пояснением (на реальных данных встречались варианты вида
+     * "fiu@nbt.tj (служба финансового мониторинга таджикистана)"), поэтому точное
+     * совпадение не покрыло бы такие случаи. Список пополняется без изменения логики
+     * регистрации.
+     *
+     * @var array<int, string>
+     */
+    private const EXCLUDED_NORMALIZED_NAME_FRAGMENTS = [
+        'fiu@nbt.tj', // email Службы финансового мониторинга Таджикистана (регулятор)
+    ];
+
     public function registerStructuredMention(SpoRaw $spoRaw, ?PartyDataInterface $otherSide): void
     {
         [$rawName, $entityType] = match (true) {
@@ -95,6 +112,17 @@ final class EntityRegistrationService
         }
     }
 
+    private function containsExcludedFragment(string $normalized): bool
+    {
+        foreach (self::EXCLUDED_NORMALIZED_NAME_FRAGMENTS as $fragment) {
+            if (str_contains($normalized, $fragment)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function buildFullName(IndividualPartyDto $party): string
     {
         return trim(implode(' ', array_filter([$party->lastName, $party->firstName, $party->middleName])));
@@ -109,7 +137,7 @@ final class EntityRegistrationService
     ): void {
         $normalized = EntityNormalizer::normalize($rawName);
 
-        if ($normalized === '') {
+        if ($normalized === '' || $this->containsExcludedFragment($normalized)) {
             return;
         }
 

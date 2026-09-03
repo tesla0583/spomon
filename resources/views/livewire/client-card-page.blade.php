@@ -26,12 +26,14 @@
     <div class="bg-white rounded border border-gray-200 p-6 mt-4">
         <h2 class="text-lg font-semibold mb-3">Карточка риска</h2>
 
-        @if ($card)
-            <div class="flex items-center gap-3 mb-3">
-                <x-risk-badge :label="$card->risk_label" />
+        <div class="flex items-center gap-3 mb-3">
+            <x-risk-badge :label="$riskLevel" />
+            @if ($card)
                 <span class="text-xs text-gray-500">рассчитано {{ $card->computed_at?->format('d.m.Y H:i') ?? '—' }}</span>
-            </div>
+            @endif
+        </div>
 
+        @if ($card)
             <p class="text-sm mb-3">{{ $card->summary }}</p>
 
             @if ($card->pattern_notes)

@@ -1,7 +1,9 @@
 {{--
-    Бейдж риск-метки клиента.
+    Бейдж уровня риска клиента.
 
-    @param ?\App\Enums\RiskLabel $label  null — карточка ещё не рассчитана LLM
+    @param ?\App\Enums\RiskLevel $label  null допускается форматом компонента, но
+                                          RiskLevel вычислим всегда — на практике null
+                                          сюда не передаётся
 --}}
 @props(['label' => null])
 

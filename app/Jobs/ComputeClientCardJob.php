@@ -81,7 +81,6 @@ final class ComputeClientCardJob implements ShouldQueue
         ClientCard::updateOrCreate(
             ['client_id' => $client->id],
             [
-                'risk_label' => $result->finalLabel,
                 'summary' => $result->summary,
                 'pattern_notes' => $result->patternNotes,
                 'network_signal' => $this->networkSignalText($result->networkSignalFound, $result->networkSignalClientReference),

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Enums\RiskLevel;
 use App\Enums\SpoFileIngestOutcome;
 use App\Models\Client;
 use App\Services\Cards\ClientCardRecomputeService;
 use App\Services\Ingestion\SpoFileIngestionService;
+use App\Services\Risk\ClientRiskLevelService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\File;
 use Livewire\Component;
@@ -49,9 +51,14 @@ final class ClientRegistry extends Component
         $this->resetPage();
     }
 
+    public function riskLevel(Client $client): RiskLevel
+    {
+        return app(ClientRiskLevelService::class)->calculate($client);
+    }
+
     public function startIngest(): void
     {
-        $incomingPath = storage_path('app/spo/incoming');
+        $incomingPath = config('spo.incoming_path');
 
         // Тот же набор файлов, что взяла бы Form101Parser-обработка через
         // SpoFileIngestionService::listXmlFiles() — только *.xml, папка может ещё не

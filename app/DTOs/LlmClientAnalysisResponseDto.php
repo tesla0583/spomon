@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\DTOs;
 
-use App\Enums\RiskLabel;
-
 /**
  * Разобранный результат вызова `submit_client_analysis` из ответа Claude API.
  *
@@ -25,7 +23,6 @@ final class LlmClientAnalysisResponseDto
         public readonly array $extractedEntities,
         public readonly bool $networkSignalFound,
         public readonly ?string $networkSignalClientReference,
-        public readonly RiskLabel $finalLabel,
         public readonly array $rawResponse,
     ) {}
 }

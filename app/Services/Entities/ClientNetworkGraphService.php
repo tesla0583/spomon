@@ -9,6 +9,7 @@ use App\DTOs\NetworkGraphEdgeDto;
 use App\DTOs\NetworkGraphNodeDto;
 use App\Models\Client;
 use App\Repositories\EntityRepository;
+use App\Services\Risk\ClientRiskLevelService;
 
 /**
  * Строит граф связей одного клиента для визуализации на карточке клиента (ECharts,
@@ -24,18 +25,16 @@ final class ClientNetworkGraphService
 {
     public function __construct(
         private readonly EntityRepository $entityRepository,
+        private readonly ClientRiskLevelService $riskLevelService,
     ) {}
 
     public function buildGraph(Client $client): NetworkGraphDto
     {
-        $client->loadMissing('card');
-
         $edges = $this->entityRepository->findNetworkGraphEdges($client->id);
 
         $otherClientIds = array_unique(array_column($edges, 'other_client_id'));
 
         $otherClients = Client::query()
-            ->with('card')
             ->whereIn('id', $otherClientIds)
             ->get(['id', 'full_name'])
             ->keyBy('id');
@@ -44,7 +43,7 @@ final class ClientNetworkGraphService
             new NetworkGraphNodeDto(
                 clientId: $client->id,
                 label: $client->full_name,
-                riskLabel: $client->card?->risk_label?->value,
+                riskLevel: $this->riskLevelService->calculate($client)->value,
                 isFocus: true,
             ),
         ];
@@ -53,7 +52,7 @@ final class ClientNetworkGraphService
             $nodes[] = new NetworkGraphNodeDto(
                 clientId: $otherClient->id,
                 label: $otherClient->full_name,
-                riskLabel: $otherClient->card?->risk_label?->value,
+                riskLevel: $this->riskLevelService->calculate($otherClient)->value,
                 isFocus: false,
             );
         }
@@ -64,6 +63,7 @@ final class ClientNetworkGraphService
                 toClientId: $edge['other_client_id'],
                 entityType: $edge['entity_type'],
                 entityLabel: $edge['entity_label'],
+                connectionLabel: $edge['connection_label'],
             ),
             $edges,
         );

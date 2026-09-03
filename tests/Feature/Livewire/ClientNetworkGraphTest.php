@@ -7,6 +7,7 @@ namespace Tests\Feature\Livewire;
 use App\Enums\EntityMentionSource;
 use App\Enums\EntityType;
 use App\Enums\PartyType;
+use App\Enums\RiskLevel;
 use App\Livewire\ClientNetworkGraph;
 use App\Models\Client;
 use App\Models\Entity;
@@ -47,11 +48,28 @@ final class ClientNetworkGraphTest extends TestCase
         self::assertCount(2, $graph['nodes']);
         self::assertCount(1, $graph['edges']);
 
+        // 1 СПО, 1 связь у обоих клиентов — RiskLevel::Medium (не Low, правило Low
+        // требует ровно 0 связей).
+        self::assertSame([
+            'clientId' => $focus->id,
+            'label' => 'Клиент Фокус',
+            'riskLevel' => RiskLevel::Medium->value,
+            'isFocus' => true,
+        ], $graph['nodes'][0]);
+
+        self::assertSame([
+            'clientId' => $other->id,
+            'label' => 'Клиент Другой',
+            'riskLevel' => RiskLevel::Medium->value,
+            'isFocus' => false,
+        ], $graph['nodes'][1]);
+
         self::assertSame([
             'fromClientId' => $focus->id,
             'toClientId' => $other->id,
             'entityType' => EntityType::Organization->value,
             'entityLabel' => 'компания',
+            'connectionLabel' => 'общий контрагент',
         ], $graph['edges'][0]);
     }
 

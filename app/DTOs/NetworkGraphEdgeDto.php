@@ -18,5 +18,6 @@ final class NetworkGraphEdgeDto
         public readonly int $toClientId,
         public readonly string $entityType,
         public readonly string $entityLabel,
+        public readonly string $connectionLabel,
     ) {}
 }

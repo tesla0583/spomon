@@ -34,7 +34,7 @@ final class ClientNetworkGraph extends Component
      * чтобы `@js($this->graph())` в блейд-шаблоне без проблем сериализовался в JSON для
      * ECharts на фронтенде.
      *
-     * @return array{nodes: array<int, array{clientId: int, label: string, riskLabel: ?string, isFocus: bool}>, edges: array<int, array{fromClientId: int, toClientId: int, entityType: string, entityLabel: string}>}
+     * @return array{nodes: array<int, array{clientId: int, label: string, riskLevel: string, isFocus: bool}>, edges: array<int, array{fromClientId: int, toClientId: int, entityType: string, entityLabel: string, connectionLabel: string}>}
      */
     public function graph(): array
     {
@@ -47,7 +47,7 @@ final class ClientNetworkGraph extends Component
                 static fn (NetworkGraphNodeDto $node): array => [
                     'clientId' => $node->clientId,
                     'label' => $node->label,
-                    'riskLabel' => $node->riskLabel,
+                    'riskLevel' => $node->riskLevel,
                     'isFocus' => $node->isFocus,
                 ],
                 $graph->nodes,
@@ -58,6 +58,7 @@ final class ClientNetworkGraph extends Component
                     'toClientId' => $edge->toClientId,
                     'entityType' => $edge->entityType,
                     'entityLabel' => $edge->entityLabel,
+                    'connectionLabel' => $edge->connectionLabel,
                 ],
                 $graph->edges,
             ),

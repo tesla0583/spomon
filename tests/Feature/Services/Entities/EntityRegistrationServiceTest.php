@@ -165,6 +165,58 @@ final class EntityRegistrationServiceTest extends TestCase
         self::assertSame(1, EntityMention::query()->count());
     }
 
+    public function test_excluded_entity_name_via_structured_mention_registers_nothing(): void
+    {
+        $spoRaw = $this->createSpoRaw();
+
+        $this->service->registerStructuredMention(
+            $spoRaw,
+            new LegalEntityPartyDto(taxPayNumber: '010000001', name: 'fiu@nbt.tj'),
+        );
+
+        self::assertSame(0, Entity::query()->count());
+        self::assertSame(0, EntityMention::query()->count());
+    }
+
+    public function test_excluded_entity_name_via_ner_mention_registers_nothing(): void
+    {
+        $spoRaw = $this->createSpoRaw(transactionDate: '2026-02-10');
+
+        $this->service->registerNerMentions($spoRaw->client, [
+            ['spo_date' => '2026-02-10', 'entities' => ['fiu@nbt.tj']],
+        ]);
+
+        self::assertSame(0, Entity::query()->count());
+        self::assertSame(0, EntityMention::query()->count());
+    }
+
+    public function test_excluded_entity_name_is_case_insensitive(): void
+    {
+        $spoRaw = $this->createSpoRaw(transactionDate: '2026-02-10');
+
+        $this->service->registerNerMentions($spoRaw->client, [
+            ['spo_date' => '2026-02-10', 'entities' => ['FIU@NBT.TJ']],
+        ]);
+
+        self::assertSame(0, Entity::query()->count());
+        self::assertSame(0, EntityMention::query()->count());
+    }
+
+    public function test_excluded_entity_name_with_surrounding_description_registers_nothing(): void
+    {
+        // На реальных данных LLM извлекает email регулятора вместе с окружающим
+        // пояснением, а не как отдельный токен — исключение проверяется по вхождению
+        // подстроки, а не по точному совпадению всей строки.
+        $spoRaw = $this->createSpoRaw(transactionDate: '2026-02-10');
+
+        $this->service->registerNerMentions($spoRaw->client, [
+            ['spo_date' => '2026-02-10', 'entities' => ['fiu@nbt.tj (Служба финансового мониторинга Таджикистана)']],
+        ]);
+
+        self::assertSame(0, Entity::query()->count());
+        self::assertSame(0, EntityMention::query()->count());
+    }
+
     public function test_unknown_entity_is_upgraded_to_concrete_type_on_structured_match(): void
     {
         $spoRaw = $this->createSpoRaw(transactionDate: '2026-02-10');

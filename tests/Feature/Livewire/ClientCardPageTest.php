@@ -7,7 +7,6 @@ namespace Tests\Feature\Livewire;
 use App\Enums\EntityMentionSource;
 use App\Enums\EntityType;
 use App\Enums\PartyType;
-use App\Enums\RiskLabel;
 use App\Livewire\ClientCardPage;
 use App\Models\Client;
 use App\Models\ClientCard;
@@ -36,7 +35,6 @@ final class ClientCardPageTest extends TestCase
 
         ClientCard::create([
             'client_id' => $client->id,
-            'risk_label' => RiskLabel::NeedsAttention,
             'summary' => 'Сводка по клиенту.',
             'pattern_notes' => null,
             'network_signal' => null,
@@ -125,5 +123,87 @@ final class ClientCardPageTest extends TestCase
         // Проверяем именно текст блока "Известные связи" целиком.
         Livewire::test(ClientCardPage::class, ['client' => $clientA])
             ->assertSee(sprintf('контрагент "компания" уже встречался в СПО клиента %s', $clientB->full_name));
+    }
+
+    public function test_shows_only_the_deterministic_risk_level_badge_no_second_status(): void
+    {
+        $client = Client::create([
+            'party_type' => PartyType::Individual,
+            'doc_number' => 'T0000001',
+            'first_name' => 'Клиент',
+            'last_name' => 'Один',
+            'middle_name' => null,
+            'dob' => '1990-05-10',
+            'full_name' => 'Клиент Один',
+        ]);
+
+        ClientCard::create([
+            'client_id' => $client->id,
+            'summary' => 'Сводка по клиенту.',
+            'pattern_notes' => null,
+            'network_signal' => null,
+            'llm_raw_response' => ['ok' => true],
+            'history_fingerprint' => hash('sha256', (string) $client->id),
+            'computed_at' => now(),
+        ]);
+
+        SpoRaw::create([
+            'client_id' => $client->id,
+            'source_file' => 'spo_1.xml',
+            'transaction_date' => '2026-02-10',
+            'currency' => 'TJS',
+            'amount' => 1000,
+            'amount_nc' => null,
+            'transaction_type' => '10.3',
+            'transaction_subtype' => '10.3.1',
+            'details' => '10.3.1.9',
+            'transaction_desc' => 'Перевод',
+            'ground_text' => 'Подозрительный перевод.',
+            'other_side' => null,
+        ]);
+
+        // 1 СПО, 0 связей — RiskLevel::Low. Старая 4-значная LLM-метка риска удалена
+        // полностью — рядом с бейджем RiskLevel не должно быть никакого второго статуса.
+        Livewire::test(ClientCardPage::class, ['client' => $client])
+            ->assertSee('Низкий')
+            ->assertDontSee('единичный случай')
+            ->assertDontSee('требует внимания')
+            ->assertDontSee('явный повторяющийся паттерн')
+            ->assertDontSee('часть более широкой сети');
+    }
+
+    public function test_shows_risk_level_badge_even_without_a_client_card(): void
+    {
+        $client = Client::create([
+            'party_type' => PartyType::Individual,
+            'doc_number' => 'T0000001',
+            'first_name' => 'Клиент',
+            'last_name' => 'Один',
+            'middle_name' => null,
+            'dob' => '1990-05-10',
+            'full_name' => 'Клиент Один',
+        ]);
+
+        SpoRaw::create([
+            'client_id' => $client->id,
+            'source_file' => 'spo_1.xml',
+            'transaction_date' => '2026-02-10',
+            'currency' => 'TJS',
+            'amount' => 1000,
+            'amount_nc' => null,
+            'transaction_type' => '10.3',
+            'transaction_subtype' => '10.3.1',
+            'details' => '10.3.1.9',
+            'transaction_desc' => 'Перевод',
+            'ground_text' => 'Подозрительный перевод.',
+            'other_side' => null,
+        ]);
+
+        // RiskLevel не зависит от ClientCard — бейдж должен показываться, даже если
+        // LLM-карточка ещё не рассчитана.
+        Livewire::test(ClientCardPage::class, ['client' => $client])
+            ->assertOk()
+            ->assertSee('Низкий')
+            ->assertSee('Карточка ещё не рассчитана');
     }
 }

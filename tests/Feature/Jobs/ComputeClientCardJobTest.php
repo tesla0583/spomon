@@ -7,7 +7,6 @@ namespace Tests\Feature\Jobs;
 use App\Enums\EntityMentionSource;
 use App\Enums\EntityType;
 use App\Enums\PartyType;
-use App\Enums\RiskLabel;
 use App\Jobs\ComputeClientCardJob;
 use App\Models\Client;
 use App\Models\ClientCard;
@@ -45,7 +44,6 @@ final class ComputeClientCardJobTest extends TestCase
         Http::assertSentCount(1);
 
         $card = ClientCard::query()->where('client_id', $client->id)->firstOrFail();
-        self::assertSame(RiskLabel::SingleCase, $card->risk_label);
         self::assertNotNull($card->history_fingerprint);
         self::assertNotNull($card->computed_at);
     }
@@ -113,7 +111,6 @@ final class ComputeClientCardJobTest extends TestCase
                                 ['spo_date' => '2026-01-10', 'entities' => ['ООО «Ромашка»']],
                             ],
                             'network_signal' => ['found' => false, 'matched_client_reference' => null],
-                            'final_label' => 'единичный случай',
                         ],
                     ],
                 ],
@@ -211,7 +208,6 @@ final class ComputeClientCardJobTest extends TestCase
                             'pattern_notes' => null,
                             'extracted_entities' => [],
                             'network_signal' => ['found' => false, 'matched_client_reference' => null],
-                            'final_label' => 'единичный случай',
                         ],
                     ],
                 ],

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Services\Llm;
 
 use App\DTOs\LlmClientAnalysisRequestDto;
-use App\Enums\RiskLabel;
 use App\Exceptions\ClaudeApiException;
 use App\Services\Llm\ClaudeApiClient;
 use Illuminate\Support\Facades\Http;
@@ -46,7 +45,6 @@ final class ClaudeApiClientTest extends TestCase
                                 'found' => true,
                                 'matched_client_reference' => '42',
                             ],
-                            'final_label' => 'явный повторяющийся паттерн',
                         ],
                     ],
                 ],
@@ -66,7 +64,6 @@ final class ClaudeApiClientTest extends TestCase
         self::assertSame([['spo_date' => '2026-01-10', 'entities' => ['ООО Ромашка']]], $result->extractedEntities);
         self::assertTrue($result->networkSignalFound);
         self::assertSame('42', $result->networkSignalClientReference);
-        self::assertSame(RiskLabel::RepeatingPattern, $result->finalLabel);
         self::assertSame('msg_test', $result->rawResponse['id']);
 
         Http::assertSent(function ($request) {
@@ -96,7 +93,6 @@ final class ClaudeApiClientTest extends TestCase
                                 ."\n".'<parameter name="pattern_notes">История содержит только один СПО, паттерн пока не подтверждён.</parameter>'
                                 ."\n".'<parameter name="extracted_entities">[{"spo_date":"2026-05-28","entities":["Алиф Банк","ТКХ Матин"]}]</parameter>'
                                 ."\n".'<parameter name="network_signal">{"found":false,"matched_client_reference":null}',
-                            'final_label' => 'требует внимания',
                         ],
                     ],
                 ],
@@ -117,7 +113,6 @@ final class ClaudeApiClientTest extends TestCase
         );
         self::assertFalse($result->networkSignalFound);
         self::assertNull($result->networkSignalClientReference);
-        self::assertSame(RiskLabel::NeedsAttention, $result->finalLabel);
     }
 
     public function test_http_error_response_throws_claude_api_exception(): void

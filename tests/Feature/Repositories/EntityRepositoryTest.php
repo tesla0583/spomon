@@ -118,6 +118,7 @@ final class EntityRepositoryTest extends TestCase
             'entity_label' => 'компания',
             'own_client_id' => $clientA->id,
             'other_client_id' => $clientB->id,
+            'connection_label' => 'общий контрагент',
         ]], $forA);
 
         self::assertSame([[
@@ -125,6 +126,7 @@ final class EntityRepositoryTest extends TestCase
             'entity_label' => 'компания',
             'own_client_id' => $clientB->id,
             'other_client_id' => $clientA->id,
+            'connection_label' => 'общий контрагент',
         ]], $forB);
     }
 
@@ -173,6 +175,92 @@ final class EntityRepositoryTest extends TestCase
         self::assertSame([], $this->repository->findNetworkGraphEdges($client->id));
     }
 
+    public function test_address_entity_edge_has_common_address_connection_label(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('г хучанд, кучаи исмоили сомони 45, дом 9, кв 12', EntityType::Address);
+
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA));
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findNetworkGraphEdges($clientA->id);
+
+        self::assertSame('общий адрес', $forA[0]['connection_label']);
+    }
+
+    public function test_structured_entity_edge_has_common_counterparty_connection_label(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('компания', EntityType::Organization);
+
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA), EntityMentionSource::Structured);
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB));
+
+        $forA = $this->repository->findNetworkGraphEdges($clientA->id);
+
+        self::assertSame('общий контрагент', $forA[0]['connection_label']);
+    }
+
+    public function test_ner_sourced_edge_has_description_connection_label_regardless_of_entity_type(): void
+    {
+        $clientA = $this->createClient('T0000001', 'Клиент А');
+        $clientB = $this->createClient('T0000002', 'Клиент Б');
+        // entity_type уже "повышен" до Organization (структурным совпадением где-то
+        // ещё), но САМО упоминание клиента A по-прежнему из свободного текста (NER) —
+        // подпись для A должна отражать именно это, а не текущий entity_type сущности.
+        $entity = $this->createEntity('компания', EntityType::Organization);
+
+        $this->mention($entity, $clientA, $this->createSpoRaw($clientA), EntityMentionSource::Ner);
+        $this->mention($entity, $clientB, $this->createSpoRaw($clientB), EntityMentionSource::Structured);
+
+        $forA = $this->repository->findNetworkGraphEdges($clientA->id);
+
+        self::assertSame('связь по описанию СПО', $forA[0]['connection_label']);
+    }
+
+    public function test_client_is_mentioned_in_another_clients_free_text_via_ner(): void
+    {
+        $client = $this->createClient('T0000001', 'Иванов Иван Иванович');
+        $otherClient = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('иванов иван иванович', EntityType::Unknown);
+
+        $this->mention($entity, $otherClient, $this->createSpoRaw($otherClient), EntityMentionSource::Ner);
+
+        self::assertTrue($this->repository->isMentionedInAnotherClientsFreeText($client));
+    }
+
+    public function test_structured_mention_of_clients_name_does_not_count_as_mentioned_elsewhere(): void
+    {
+        // Правило требует именно source = Ner — структурное совпадение (контрагент
+        // сделки, а не упоминание в свободном тексте) не в счёт.
+        $client = $this->createClient('T0000001', 'Иванов Иван Иванович');
+        $otherClient = $this->createClient('T0000002', 'Клиент Б');
+        $entity = $this->createEntity('иванов иван иванович', EntityType::Person);
+
+        $this->mention($entity, $otherClient, $this->createSpoRaw($otherClient), EntityMentionSource::Structured);
+
+        self::assertFalse($this->repository->isMentionedInAnotherClientsFreeText($client));
+    }
+
+    public function test_clients_own_mention_of_the_same_name_does_not_count(): void
+    {
+        $client = $this->createClient('T0000001', 'Иванов Иван Иванович');
+        $entity = $this->createEntity('иванов иван иванович', EntityType::Unknown);
+
+        $this->mention($entity, $client, $this->createSpoRaw($client), EntityMentionSource::Ner);
+
+        self::assertFalse($this->repository->isMentionedInAnotherClientsFreeText($client));
+    }
+
+    public function test_client_without_any_matching_entity_is_not_mentioned_elsewhere(): void
+    {
+        $client = $this->createClient('T0000001', 'Иванов Иван Иванович');
+
+        self::assertFalse($this->repository->isMentionedInAnotherClientsFreeText($client));
+    }
+
     private function createClient(string $docNumber, string $fullName): Client
     {
         return Client::create([
@@ -213,13 +301,17 @@ final class EntityRepositoryTest extends TestCase
         ]);
     }
 
-    private function mention(Entity $entity, Client $client, SpoRaw $spoRaw): EntityMention
-    {
+    private function mention(
+        Entity $entity,
+        Client $client,
+        SpoRaw $spoRaw,
+        EntityMentionSource $source = EntityMentionSource::Structured,
+    ): EntityMention {
         return EntityMention::create([
             'entity_id' => $entity->id,
             'client_id' => $client->id,
             'spo_raw_id' => $spoRaw->id,
-            'source' => EntityMentionSource::Structured,
+            'source' => $source,
         ]);
     }
 }
